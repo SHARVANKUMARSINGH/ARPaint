@@ -6,6 +6,7 @@ import javax.vecmath.Vector3f;
 public class Settings {
   private static volatile Vector3f color = new Vector3f(1.0f, 1.0f, 1.0f);
   private static volatile float lineWidth = 0.33f;
+  private static volatile boolean shadowsEnabled = true;
   private static final float strokeDrawDistance = 0.125f;
   private static final float minDistance = 0.000625f;
   private static final float nearClip = 0.001f;
@@ -20,7 +21,15 @@ public class Settings {
   }
 
   public static void setLineWidth(float width) {
-    lineWidth = Math.max(0.01f, width);
+    lineWidth = Math.max(0.05f, Math.min(width, 4.0f));
+  }
+
+  public static boolean isShadowsEnabled() {
+    return shadowsEnabled;
+  }
+
+  public static void setShadowsEnabled(boolean enabled) {
+    shadowsEnabled = enabled;
   }
 
   public static float getStrokeDrawDistance() {

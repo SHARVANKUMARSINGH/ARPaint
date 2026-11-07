@@ -360,7 +360,7 @@ fun ARPaintScreen(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Size",
+                            text = String.format(Locale.US, "%.1fx", currentThickness),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             fontSize = 11.sp

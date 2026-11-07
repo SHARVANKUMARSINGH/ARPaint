@@ -54,7 +54,12 @@ fun ColorPickerDialog(
 
     val currentColor = Color(red, green, blue, 1f)
 
-    Dialog(onDismissRequest = onDismiss) {
+    val closeAndSave = {
+        onColorSelected(currentColor)
+        onDismiss()
+    }
+
+    Dialog(onDismissRequest = closeAndSave) {
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -82,14 +87,14 @@ fun ColorPickerDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     IconButton(
-                        onClick = onDismiss,
+                        onClick = closeAndSave,
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                         )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = "Close & Save",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -154,6 +159,7 @@ fun ColorPickerDialog(
                                     red = preset.red
                                     green = preset.green
                                     blue = preset.blue
+                                    onColorSelected(Color(preset.red, preset.green, preset.blue, 1f))
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -172,9 +178,30 @@ fun ColorPickerDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // RGB Custom Sliders
-                ColorSlider(label = "R", value = red, color = Color.Red) { red = it }
-                ColorSlider(label = "G", value = green, color = Color.Green) { green = it }
-                ColorSlider(label = "B", value = blue, color = Color.Blue) { blue = it }
+                ColorSlider(
+                    label = "R",
+                    value = red,
+                    color = Color.Red
+                ) {
+                    red = it
+                    onColorSelected(Color(it, green, blue, 1f))
+                }
+                ColorSlider(
+                    label = "G",
+                    value = green,
+                    color = Color.Green
+                ) {
+                    green = it
+                    onColorSelected(Color(red, it, blue, 1f))
+                }
+                ColorSlider(
+                    label = "B",
+                    value = blue,
+                    color = Color.Blue
+                ) {
+                    blue = it
+                    onColorSelected(Color(red, green, it, 1f))
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -183,18 +210,11 @@ fun ColorPickerDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            onColorSelected(currentColor)
-                            onDismiss()
-                        },
+                        onClick = closeAndSave,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Apply", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Done", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }

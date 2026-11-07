@@ -17,7 +17,7 @@
   <br />
 
   <a href="https://github.com/SHARVANKUMARSINGH/ARPaint/releases/latest">
-    <img src="https://img.shields.io/badge/⬇️%20Download_Latest_APK-v2.0.7-22c55e?style=for-the-badge&logo=android&logoColor=white" height="38" alt="Download Latest APK" />
+    <img src="https://img.shields.io/badge/⬇️%20Download_Latest_APK-v2.0.9-22c55e?style=for-the-badge&logo=android&logoColor=white" height="38" alt="Download Latest APK" />
   </a>
 
   <br /><br />
@@ -36,16 +36,26 @@
 | :--- | :--- | :--- |
 | **User Interface** | Legacy Support Views & Static XML | 🎨 **Jetpack Compose + Material 3** |
 | **Video Recording** | ❌ Not available | 🎥 **Hardware H.264 / AVC MP4 with EGL Mirroring** |
+| **3D Shading & Shadows** | Flat 2D unshaded lines, no shadows | 🌟 **Volumetric 3D cylindrical lighting, specular sheen & real-time drop shadows** |
+| **Stroke Persistence** | ⚠️ Changes reset all existing strokes | 💾 **Permanent per-stroke thickness & color preservation** |
 | **App Stability** | ⚠️ Frequent crashes (`BadToken`, IndexOutOfBounds, etc.) | 🛡️ **Zero-crash architecture, safe bounds & thread-safe** |
 | **Memory Performance** | ⚠️ Native buffer leaks on every frame | ⚡ **Reused direct byte buffers, zero memory leaks** |
-| **Popups & Dialogs** | Detached popups with missing close actions | ✨ **Modern Compose dialogs with explicit Close buttons** |
-| **Color & Stroke Pickers** | Basic preset buttons | 🎨 **16 Presets + fine RGB sliders + live canvas preview** |
+| **Popups & Dialogs** | Detached popups with missing close actions | ✨ **Modern Compose dialogs with instant save & explicit Close buttons** |
+| **Color & Stroke Pickers** | Basic preset buttons | 🎨 **16 Presets + fine RGB sliders + 3D live canvas preview** |
 | **AR Engine** | Obsolete ARCore 1.x SDK | 🚀 **Google ARCore 1.41.0 on Android 14 (API 34)** |
 | **Build Pipeline** | Gradle 4.10 / AGP 3.2 | ⚙️ **Gradle 8.4 / AGP 8.2.2 / JDK 17 CI/CD** |
 
 ---
 
 ## ✨ Key Features
+
+### 🌟 3D Volumetric Lighting & Real-Time Ground Shadows
+- **Real-Time 3D Drop Shadows**: Strokes cast authentic soft contact shadows downward onto the ground and real-world surfaces with realistic penumbra falloff.
+- **Parametric 3D Cylindrical Shading**: Ribbon geometry mathematically derives true 3D surface normals across the cross-section.
+- **Directional Studio Key Light & Specular Gleam**: Smooth Blinn-Phong specular highlights run down the spine of strokes, creating realistic glossy tubes and neon sculpts.
+- **Edge Ambient Occlusion**: Subtle rim darkening creates deep physical roundness and volume.
+- **Anti-Aliasing & Rounded Caps**: Silky smooth stroke contours with tapered start/end caps eliminate jagged OpenGL staircasing.
+- **Persistent Thickness & Colors**: Each stroke retains its own width and color permanently—switching brush thickness or palette will never mutate or alter previously drawn artwork.
 
 ### 🎥 Real-Time Video Recording & Gallery Export
 - **One-Tap Recording**: Tap the record button to capture your AR drawing session at 30/60 FPS.

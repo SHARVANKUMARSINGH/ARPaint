@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
     private var lastPoint = Vector3f(0f, 0f, 0f)
 
     private val strokesLock = Any()
-    private val strokes = ArrayList<ArrayList<Vector3f>>()
+    private val strokes = ArrayList<Stroke>()
 
     private val projmtx = FloatArray(16)
     private val viewmtx = FloatArray(16)
@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
 
         // Load saved preferences
         val savedWidth = sharedPreferences.getFloat("LineWidthFloat", 0.33f)
-        currentThicknessCompose.value = savedWidth
+        currentThicknessCompose.floatValue = savedWidth
         Settings.setLineWidth(savedWidth)
 
         val savedColorInt = sharedPreferences.getInt("StrokeColorInt", android.graphics.Color.WHITE)
@@ -494,11 +494,6 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
             }
 
             if (lineShaderRenderer.bNeedsUpdate.get()) {
-                lineShaderRenderer.setColor(Settings.getColor())
-                lineShaderRenderer.mDrawDistance = Settings.getStrokeDrawDistance()
-                lineShaderRenderer.setDistanceScale(0.0f)
-                lineShaderRenderer.setLineWidth(Settings.getLineWidth())
-
                 synchronized(strokesLock) {
                     lineShaderRenderer.updateStrokes(strokes)
                 }
@@ -524,8 +519,11 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
         lastPoint = biquadFilter.update(newPoint)
 
         synchronized(strokesLock) {
-            val stroke = ArrayList<Vector3f>()
-            stroke.add(lastPoint)
+            val stroke = Stroke(
+                Settings.getColor(),
+                Settings.getLineWidth()
+            )
+            stroke.addPoint(lastPoint)
             strokes.add(stroke)
         }
         updateStrokeCountUi()
@@ -546,11 +544,14 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
 
             synchronized(strokesLock) {
                 if (strokes.isEmpty()) {
-                    val stroke = ArrayList<Vector3f>()
-                    stroke.add(lastPoint)
+                    val stroke = Stroke(
+                        Settings.getColor(),
+                        Settings.getLineWidth()
+                    )
+                    stroke.addPoint(lastPoint)
                     strokes.add(stroke)
                 } else {
-                    strokes[strokes.size - 1].add(lastPoint)
+                    strokes[strokes.size - 1].addPoint(lastPoint)
                 }
             }
         }
