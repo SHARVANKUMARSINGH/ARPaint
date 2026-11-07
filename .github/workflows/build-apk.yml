@@ -3,7 +3,7 @@ name: Build ARPaint APK
 on:
   push:
     branches: [ "master", "main" ]
-  workflow_dispatch: # Allows you to trigger the build manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,21 +13,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 8
+      - name: Set up JDK 17 for Android SDK Manager
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Android NDK 20
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;20.0.5594570"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/20.0.5594570" >> $GITHUB_ENV
+          echo "ndk.dir=$ANDROID_HOME/ndk/20.0.5594570" >> local.properties
+
+      - name: Switch to JDK 8 for Legacy Gradle Build
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '8'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK 20
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager --install "ndk;20.0.5594570"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/20.0.5594570" >> $GITHUB_ENV
-          echo "ndk.dir=$ANDROID_HOME/ndk/20.0.5594570" >> local.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
