@@ -16,44 +16,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17 for Android SDK Manager
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Android NDK 20
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;20.0.5594570"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/20.0.5594570" >> $GITHUB_ENV
-          echo "ndk.dir=$ANDROID_HOME/ndk/20.0.5594570" >> local.properties
-
-      - name: Patch legacy JCenter & Jacoco issues
-        run: |
-          # Remove dead jacoco-android plugin references
-          sed -i '/jacoco-android/d' build.gradle app/build.gradle || true
-          # Remove the jacoco { ... } configuration block in app/build.gradle
-          sed -i '/jacoco\s*{/,/}/d' app/build.gradle || true
-          # Inject mavenCentral() and JCenter mirror so legacy dependencies resolve
-          sed -i 's/jcenter()/mavenCentral()\n        maven { url "https:\/\/://aliyun.com\/repository\/jcenter" }\n        jcenter()/g' build.gradle app/build.gradle || true
-
-      - name: Switch to JDK 8 for Legacy Gradle Build
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '8'
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arpaint-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload APK to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "ARPaint APK (Build #${{ github.run_number }})"
-          body: "Automated pre-compiled Debug APK for ARPaint."
+          tag_name: v2.0.${{ github.run_number }}
+          name: "ARPaint 2.0 APK (Build #${{ github.run_number }})"
+          body: "Modernized ARPaint with Jetpack Compose, Material 3, Video Recording, and rock-solid stability."
           files: app/build/outputs/apk/debug/*.apk

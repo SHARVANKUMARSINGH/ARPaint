@@ -13,24 +13,23 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.vecmath.Vector3f;
 
-/** Renders a point cloud. */
+/** Renders 3D ribbon strokes with dynamic width, perspective, and lighting. */
 public class LineShaderRenderer {
 
   private static final String TAG = LineShaderRenderer.class.getSimpleName();
-  private static final int FLOATS_PER_POINT = 3; // X,Y,Z.
+  private static final int FLOATS_PER_POINT = 3; // X,Y,Z
   private static final int BYTES_PER_FLOAT = 4;
   private static final int BYTES_PER_POINT = BYTES_PER_FLOAT * FLOATS_PER_POINT;
 
-  private float[] mModelMatrix = new float[16];
-  private float[] mModelViewMatrix = new float[16];
-  private float[] mModelViewProjectionMatrix = new float[16];
+  private final float[] mModelMatrix = new float[16];
+  private final float[] mModelViewMatrix = new float[16];
+  private final float[] mModelViewProjectionMatrix = new float[16];
 
   private int mPositionAttribute = 0;
   private int mPreviousAttribute = 0;
   private int mNextAttribute = 0;
   private int mSideAttribute = 0;
   private int mWidthAttribte = 0;
-
   private int mCountersAttribute = 0;
 
   private int mProjectionUniform = 0;
@@ -45,9 +44,9 @@ public class LineShaderRenderer {
   private int mDrawModeUniform = 0;
   private int mNearCutoffUniform = 0;
   private int mFarCutoffUniform = 0;
+  private int mLineDepthScaleUniform = 0;
 
   private boolean mDrawMode = false;
-
   private int mVisibility = 0;
   private int mAlphaTest = 0;
 
@@ -58,6 +57,15 @@ public class LineShaderRenderer {
   private float[] mWidth;
   private float[] mPrevious;
 
+  // Cached direct buffers to prevent native memory leaks
+  private FloatBuffer mPositionsBuffer;
+  private FloatBuffer mNextBuffer;
+  private FloatBuffer mPreviousBuffer;
+  private FloatBuffer mSideBuffer;
+  private FloatBuffer mWidthBuffer;
+  private FloatBuffer mCountersBuffer;
+  private int mAllocatedCount = 0;
+
   private int mPositionAddress;
   private int mPreviousAddress;
   private int mNextAddress;
@@ -65,84 +73,85 @@ public class LineShaderRenderer {
   private int mWidthAddress;
   private int mCounterAddress;
 
-  private int mNumPoints = 0;
   private int mNumBytes = 0;
-
   private int mVbo = 0;
   private int mVboSize = 0;
-
   private int mProgramName = 0;
-  private float lineWidth = 0;
+  private float lineWidth = 0.5f;
+  private Vector3f mColor = new Vector3f(1f, 1f, 1f);
 
-  private Vector3f mColor;
-
-  public AtomicBoolean bNeedsUpdate = new AtomicBoolean();
-
-  private int mLineDepthScaleUniform;
+  public final AtomicBoolean bNeedsUpdate = new AtomicBoolean(false);
   private float mLineDepthScale = 10.0f;
+  public float mDrawDistance = 0.125f;
 
-  public float mDrawDistance;
-
-  public LineShaderRenderer() {}
+  public LineShaderRenderer() {
+    Matrix.setIdentityM(mModelMatrix, 0);
+  }
 
   public void createOnGlThread(Context context) {
-    ShaderUtil.checkGLError(TAG, "before create");
+    if (context == null) return;
+    try {
+      int[] buffers = new int[1];
+      GLES20.glGenBuffers(1, buffers, 0);
+      mVbo = buffers[0];
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
+      mVboSize = 0;
+      GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mVboSize, null, GLES20.GL_DYNAMIC_DRAW);
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
 
-    int buffers[] = new int[1];
-    GLES20.glGenBuffers(1, buffers, 0);
-    mVbo = buffers[0];
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
-    mVboSize = 0;
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mVboSize, null, GLES20.GL_DYNAMIC_DRAW);
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+      int vertexShader =
+          ShaderUtil.loadGLShader(TAG, context, GLES20.GL_VERTEX_SHADER, R.raw.line_vert);
+      int fragmentShader =
+          ShaderUtil.loadGLShader(TAG, context, GLES20.GL_FRAGMENT_SHADER, R.raw.line_frag);
 
-    ShaderUtil.checkGLError(TAG, "buffer alloc");
+      mProgramName = GLES20.glCreateProgram();
+      GLES20.glAttachShader(mProgramName, vertexShader);
+      GLES20.glAttachShader(mProgramName, fragmentShader);
+      GLES20.glLinkProgram(mProgramName);
 
-    int vertexShader =
-        ShaderUtil.loadGLShader(TAG, context, GLES20.GL_VERTEX_SHADER, R.raw.line_vert);
-    int fragmentShader =
-        ShaderUtil.loadGLShader(TAG, context, GLES20.GL_FRAGMENT_SHADER, R.raw.line_frag);
+      int[] linkStatus = new int[1];
+      GLES20.glGetProgramiv(mProgramName, GLES20.GL_LINK_STATUS, linkStatus, 0);
+      if (linkStatus[0] != GLES20.GL_TRUE) {
+        Log.e(TAG, "Could not link program: " + GLES20.glGetProgramInfoLog(mProgramName));
+        GLES20.glDeleteProgram(mProgramName);
+        mProgramName = 0;
+        return;
+      }
 
-    mProgramName = GLES20.glCreateProgram();
-    GLES20.glAttachShader(mProgramName, vertexShader);
-    GLES20.glAttachShader(mProgramName, fragmentShader);
-    GLES20.glLinkProgram(mProgramName);
-    GLES20.glUseProgram(mProgramName);
+      GLES20.glUseProgram(mProgramName);
 
-    ShaderUtil.checkGLError(TAG, "program");
+      mPositionAttribute = GLES20.glGetAttribLocation(mProgramName, "position");
+      mPreviousAttribute = GLES20.glGetAttribLocation(mProgramName, "previous");
+      mNextAttribute = GLES20.glGetAttribLocation(mProgramName, "next");
+      mSideAttribute = GLES20.glGetAttribLocation(mProgramName, "side");
+      mWidthAttribte = GLES20.glGetAttribLocation(mProgramName, "width");
+      mCountersAttribute = GLES20.glGetAttribLocation(mProgramName, "counters");
 
-    mPositionAttribute = GLES20.glGetAttribLocation(mProgramName, "position");
-    mPreviousAttribute = GLES20.glGetAttribLocation(mProgramName, "previous");
-    mNextAttribute = GLES20.glGetAttribLocation(mProgramName, "next");
-    mSideAttribute = GLES20.glGetAttribLocation(mProgramName, "side");
-    mWidthAttribte = GLES20.glGetAttribLocation(mProgramName, "width");
-    mCountersAttribute = GLES20.glGetAttribLocation(mProgramName, "counters");
-    mProjectionUniform = GLES20.glGetUniformLocation(mProgramName, "projectionMatrix");
-    mModelViewUniform = GLES20.glGetUniformLocation(mProgramName, "modelViewMatrix");
-    mResolutionUniform = GLES20.glGetUniformLocation(mProgramName, "resolution");
-    mLineWidthUniform = GLES20.glGetUniformLocation(mProgramName, "lineWidth");
-    mColorUniform = GLES20.glGetUniformLocation(mProgramName, "color");
-    mOpacityUniform = GLES20.glGetUniformLocation(mProgramName, "opacity");
-    mNearUniform = GLES20.glGetUniformLocation(mProgramName, "near");
-    mFarUniform = GLES20.glGetUniformLocation(mProgramName, "far");
-    mSizeAttenuationUniform = GLES20.glGetUniformLocation(mProgramName, "sizeAttenuation");
-    mVisibility = GLES20.glGetUniformLocation(mProgramName, "visibility");
-    mAlphaTest = GLES20.glGetUniformLocation(mProgramName, "alphaTest");
-    mDrawModeUniform = GLES20.glGetUniformLocation(mProgramName, "drawMode");
-    mNearCutoffUniform = GLES20.glGetUniformLocation(mProgramName, "nearCutOff");
-    mFarCutoffUniform = GLES20.glGetUniformLocation(mProgramName, "farCutOff");
-    mLineDepthScaleUniform = GLES20.glGetUniformLocation(mProgramName, "lineDepthScale");
+      mProjectionUniform = GLES20.glGetUniformLocation(mProgramName, "projectionMatrix");
+      mModelViewUniform = GLES20.glGetUniformLocation(mProgramName, "modelViewMatrix");
+      mResolutionUniform = GLES20.glGetUniformLocation(mProgramName, "resolution");
+      mLineWidthUniform = GLES20.glGetUniformLocation(mProgramName, "lineWidth");
+      mColorUniform = GLES20.glGetUniformLocation(mProgramName, "color");
+      mOpacityUniform = GLES20.glGetUniformLocation(mProgramName, "opacity");
+      mNearUniform = GLES20.glGetUniformLocation(mProgramName, "near");
+      mFarUniform = GLES20.glGetUniformLocation(mProgramName, "far");
+      mSizeAttenuationUniform = GLES20.glGetUniformLocation(mProgramName, "sizeAttenuation");
+      mVisibility = GLES20.glGetUniformLocation(mProgramName, "visibility");
+      mAlphaTest = GLES20.glGetUniformLocation(mProgramName, "alphaTest");
+      mDrawModeUniform = GLES20.glGetUniformLocation(mProgramName, "drawMode");
+      mNearCutoffUniform = GLES20.glGetUniformLocation(mProgramName, "nearCutOff");
+      mFarCutoffUniform = GLES20.glGetUniformLocation(mProgramName, "farCutOff");
+      mLineDepthScaleUniform = GLES20.glGetUniformLocation(mProgramName, "lineDepthScale");
 
-    ShaderUtil.checkGLError(TAG, "program  params");
-
-    Matrix.setIdentityM(mModelMatrix, 0);
-
-    mColor = new Vector3f(1f, 1f, 1f);
-    lineWidth = 0.5f;
+      Matrix.setIdentityM(mModelMatrix, 0);
+      bNeedsUpdate.set(true);
+    } catch (Exception e) {
+      Log.e(TAG, "Error in createOnGlThread", e);
+    }
   }
 
   public void setLineWidth(float width) {
-    lineWidth = width;
+    lineWidth = Math.max(0.01f, width);
   }
 
   public void setDrawDebug(boolean drawDebugMode) {
@@ -150,47 +159,85 @@ public class LineShaderRenderer {
   }
 
   public void setColor(Vector3f color) {
-    mColor = new Vector3f(color);
+    if (color != null) {
+      mColor = new Vector3f(color);
+    }
   }
 
   public void setDistanceScale(float distanceScale) {
     this.mLineDepthScale = distanceScale;
   }
 
-  public void updateStrokes(ArrayList<ArrayList<Vector3f>> strokes) {
-    mNumPoints = 0;
-    for (ArrayList<Vector3f> l : strokes) {
-      mNumPoints += l.size() * 2 + 2;
+  public synchronized void updateStrokes(List<ArrayList<Vector3f>> strokes) {
+    if (strokes == null || strokes.isEmpty()) {
+      mNumBytes = 0;
+      return;
     }
 
-    ensureCapacity(mNumPoints);
+    int totalPoints = 0;
+    for (int i = 0; i < strokes.size(); i++) {
+      ArrayList<Vector3f> line = strokes.get(i);
+      if (line != null && line.size() >= 2) {
+        totalPoints += line.size() * 2 + 2;
+      }
+    }
+
+    if (totalPoints == 0) {
+      mNumBytes = 0;
+      return;
+    }
+
+    ensureCapacity(totalPoints);
 
     int offset = 0;
-    for (ArrayList<Vector3f> l : strokes) {
-      offset = addLine(l, offset);
+    for (int i = 0; i < strokes.size(); i++) {
+      ArrayList<Vector3f> line = strokes.get(i);
+      if (line != null && line.size() >= 2) {
+        offset = addLine(line, offset);
+      }
     }
     mNumBytes = offset;
   }
 
   private void ensureCapacity(int numPoints) {
-    int count = 1024;
-    if (mSide != null) {
-      count = mSide.length;
-    }
-
+    int count = Math.max(1024, mAllocatedCount);
     while (count < numPoints) {
-      count += 1024;
+      count = count * 2;
     }
 
-    if (mSide == null || mSide.length < count) {
-      Log.i(TAG, "alloc " + count);
+    if (mAllocatedCount < count) {
+      mAllocatedCount = count;
       mPositions = new float[count * 3];
       mNext = new float[count * 3];
       mPrevious = new float[count * 3];
-
       mCounters = new float[count];
       mSide = new float[count];
       mWidth = new float[count];
+
+      // Re-allocate direct float buffers only when growing capacity
+      ByteBuffer bbPos = ByteBuffer.allocateDirect(count * 3 * BYTES_PER_FLOAT);
+      bbPos.order(ByteOrder.nativeOrder());
+      mPositionsBuffer = bbPos.asFloatBuffer();
+
+      ByteBuffer bbNext = ByteBuffer.allocateDirect(count * 3 * BYTES_PER_FLOAT);
+      bbNext.order(ByteOrder.nativeOrder());
+      mNextBuffer = bbNext.asFloatBuffer();
+
+      ByteBuffer bbPrev = ByteBuffer.allocateDirect(count * 3 * BYTES_PER_FLOAT);
+      bbPrev.order(ByteOrder.nativeOrder());
+      mPreviousBuffer = bbPrev.asFloatBuffer();
+
+      ByteBuffer bbSide = ByteBuffer.allocateDirect(count * BYTES_PER_FLOAT);
+      bbSide.order(ByteOrder.nativeOrder());
+      mSideBuffer = bbSide.asFloatBuffer();
+
+      ByteBuffer bbWidth = ByteBuffer.allocateDirect(count * BYTES_PER_FLOAT);
+      bbWidth.order(ByteOrder.nativeOrder());
+      mWidthBuffer = bbWidth.asFloatBuffer();
+
+      ByteBuffer bbCount = ByteBuffer.allocateDirect(count * BYTES_PER_FLOAT);
+      bbCount.order(ByteOrder.nativeOrder());
+      mCountersBuffer = bbCount.asFloatBuffer();
     }
   }
 
@@ -198,21 +245,19 @@ public class LineShaderRenderer {
     if (line == null || line.size() < 2) return offset;
 
     int lineSize = line.size();
-
     int ii = offset;
+
     for (int i = 0; i < lineSize; i++) {
-
       int iGood = i;
-      if (iGood < 0) iGood = 0;
-      if (iGood >= lineSize) iGood = lineSize - 1;
-
-      int i_m_1 = (iGood - 1) < 0 ? iGood : iGood - 1;
-      int i_p_1 = (iGood + 1) > (lineSize - 1) ? iGood : iGood + 1;
+      int i_m_1 = Math.max(0, iGood - 1);
+      int i_p_1 = Math.min(lineSize - 1, iGood + 1);
       float c = ((float) i / lineSize);
 
       Vector3f current = line.get(iGood);
       Vector3f previous = line.get(i_m_1);
       Vector3f next = line.get(i_p_1);
+
+      if (current == null || previous == null || next == null) continue;
 
       if (i == 0) {
         setMemory(ii++, current, previous, next, c, lineWidth, 1f);
@@ -236,6 +281,8 @@ public class LineShaderRenderer {
       float counter,
       float width,
       float side) {
+    if (index * 3 + 2 >= mPositions.length) return;
+
     mPositions[index * 3] = pos.x;
     mPositions[index * 3 + 1] = pos.y;
     mPositions[index * 3 + 2] = pos.z;
@@ -257,49 +304,66 @@ public class LineShaderRenderer {
     bNeedsUpdate.set(true);
   }
 
-  public void upload() {
+  public synchronized void upload() {
     bNeedsUpdate.set(false);
 
-    FloatBuffer current = toFloatBuffer(mPositions);
-    FloatBuffer next = toFloatBuffer(mNext);
-    FloatBuffer previous = toFloatBuffer(mPrevious);
+    if (mNumBytes <= 0 || mPositions == null || mVbo == 0) {
+      return;
+    }
 
-    FloatBuffer side = toFloatBuffer(mSide);
-    FloatBuffer width = toFloatBuffer(mWidth);
-    FloatBuffer counter = toFloatBuffer(mCounters);
+    try {
+      mPositionsBuffer.clear();
+      mPositionsBuffer.put(mPositions, 0, mNumBytes * 3);
+      mPositionsBuffer.position(0);
 
-    //        mNumPoints = mPositions.length;
+      mNextBuffer.clear();
+      mNextBuffer.put(mNext, 0, mNumBytes * 3);
+      mNextBuffer.position(0);
 
-    mPositionAddress = 0;
-    mNextAddress = mPositionAddress + mNumBytes * 3 * BYTES_PER_FLOAT;
-    mPreviousAddress = mNextAddress + mNumBytes * 3 * BYTES_PER_FLOAT;
-    mSideAddress = mPreviousAddress + mNumBytes * 3 * BYTES_PER_FLOAT;
+      mPreviousBuffer.clear();
+      mPreviousBuffer.put(mPrevious, 0, mNumBytes * 3);
+      mPreviousBuffer.position(0);
 
-    mWidthAddress = mSideAddress + mNumBytes * BYTES_PER_FLOAT;
-    mCounterAddress = mWidthAddress + mNumBytes * BYTES_PER_FLOAT;
-    mVboSize = mCounterAddress + mNumBytes * BYTES_PER_FLOAT;
+      mSideBuffer.clear();
+      mSideBuffer.put(mSide, 0, mNumBytes);
+      mSideBuffer.position(0);
 
-    ShaderUtil.checkGLError(TAG, "before update");
+      mWidthBuffer.clear();
+      mWidthBuffer.put(mWidth, 0, mNumBytes);
+      mWidthBuffer.position(0);
 
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
+      mCountersBuffer.clear();
+      mCountersBuffer.put(mCounters, 0, mNumBytes);
+      mCountersBuffer.position(0);
 
-    GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mVboSize, null, GLES20.GL_DYNAMIC_DRAW);
+      mPositionAddress = 0;
+      mNextAddress = mPositionAddress + mNumBytes * 3 * BYTES_PER_FLOAT;
+      mPreviousAddress = mNextAddress + mNumBytes * 3 * BYTES_PER_FLOAT;
+      mSideAddress = mPreviousAddress + mNumBytes * 3 * BYTES_PER_FLOAT;
+      mWidthAddress = mSideAddress + mNumBytes * BYTES_PER_FLOAT;
+      mCounterAddress = mWidthAddress + mNumBytes * BYTES_PER_FLOAT;
+      mVboSize = mCounterAddress + mNumBytes * BYTES_PER_FLOAT;
 
-    GLES20.glBufferSubData(
-        GLES20.GL_ARRAY_BUFFER, mPositionAddress, mNumBytes * 3 * BYTES_PER_FLOAT, current);
-    GLES20.glBufferSubData(
-        GLES20.GL_ARRAY_BUFFER, mNextAddress, mNumBytes * 3 * BYTES_PER_FLOAT, next);
-    GLES20.glBufferSubData(
-        GLES20.GL_ARRAY_BUFFER, mPreviousAddress, mNumBytes * 3 * BYTES_PER_FLOAT, previous);
-    GLES20.glBufferSubData(GLES20.GL_ARRAY_BUFFER, mSideAddress, mNumBytes * BYTES_PER_FLOAT, side);
-    GLES20.glBufferSubData(
-        GLES20.GL_ARRAY_BUFFER, mWidthAddress, mNumBytes * BYTES_PER_FLOAT, width);
-    GLES20.glBufferSubData(
-        GLES20.GL_ARRAY_BUFFER, mCounterAddress, mNumBytes * BYTES_PER_FLOAT, counter);
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
+      GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, mVboSize, null, GLES20.GL_DYNAMIC_DRAW);
 
-    GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+      GLES20.glBufferSubData(
+          GLES20.GL_ARRAY_BUFFER, mPositionAddress, mNumBytes * 3 * BYTES_PER_FLOAT, mPositionsBuffer);
+      GLES20.glBufferSubData(
+          GLES20.GL_ARRAY_BUFFER, mNextAddress, mNumBytes * 3 * BYTES_PER_FLOAT, mNextBuffer);
+      GLES20.glBufferSubData(
+          GLES20.GL_ARRAY_BUFFER, mPreviousAddress, mNumBytes * 3 * BYTES_PER_FLOAT, mPreviousBuffer);
+      GLES20.glBufferSubData(
+          GLES20.GL_ARRAY_BUFFER, mSideAddress, mNumBytes * BYTES_PER_FLOAT, mSideBuffer);
+      GLES20.glBufferSubData(
+          GLES20.GL_ARRAY_BUFFER, mWidthAddress, mNumBytes * BYTES_PER_FLOAT, mWidthBuffer);
+      GLES20.glBufferSubData(
+          GLES20.GL_ARRAY_BUFFER, mCounterAddress, mNumBytes * BYTES_PER_FLOAT, mCountersBuffer);
 
-    ShaderUtil.checkGLError(TAG, "after update");
+      GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
+    } catch (Exception e) {
+      Log.e(TAG, "Error uploading line vertex buffers", e);
+    }
   }
 
   public void draw(
@@ -309,28 +373,20 @@ public class LineShaderRenderer {
       float screenHeight,
       float nearClip,
       float farClip) {
+    if (mNumBytes <= 0 || mProgramName == 0 || mVbo == 0) {
+      return;
+    }
 
     Matrix.multiplyMM(mModelViewMatrix, 0, cameraView, 0, mModelMatrix, 0);
     Matrix.multiplyMM(mModelViewProjectionMatrix, 0, cameraPerspective, 0, mModelViewMatrix, 0);
 
-    ShaderUtil.checkGLError(TAG, "Before draw");
-
     GLES20.glUseProgram(mProgramName);
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
+
     GLES20.glVertexAttribPointer(
-        mPositionAttribute,
-        FLOATS_PER_POINT,
-        GLES20.GL_FLOAT,
-        false,
-        BYTES_PER_POINT,
-        mPositionAddress);
+        mPositionAttribute, FLOATS_PER_POINT, GLES20.GL_FLOAT, false, BYTES_PER_POINT, mPositionAddress);
     GLES20.glVertexAttribPointer(
-        mPreviousAttribute,
-        FLOATS_PER_POINT,
-        GLES20.GL_FLOAT,
-        false,
-        BYTES_PER_POINT,
-        mPreviousAddress);
+        mPreviousAttribute, FLOATS_PER_POINT, GLES20.GL_FLOAT, false, BYTES_PER_POINT, mPreviousAddress);
     GLES20.glVertexAttribPointer(
         mNextAttribute, FLOATS_PER_POINT, GLES20.GL_FLOAT, false, BYTES_PER_POINT, mNextAddress);
     GLES20.glVertexAttribPointer(
@@ -339,6 +395,7 @@ public class LineShaderRenderer {
         mWidthAttribte, 1, GLES20.GL_FLOAT, false, BYTES_PER_FLOAT, mWidthAddress);
     GLES20.glVertexAttribPointer(
         mCountersAttribute, 1, GLES20.GL_FLOAT, false, BYTES_PER_FLOAT, mCounterAddress);
+
     GLES20.glUniformMatrix4fv(mModelViewUniform, 1, false, mModelViewMatrix, 0);
     GLES20.glUniformMatrix4fv(mProjectionUniform, 1, false, cameraPerspective, 0);
 
@@ -373,17 +430,5 @@ public class LineShaderRenderer {
     GLES20.glDisableVertexAttribArray(mPositionAttribute);
 
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0);
-
-    ShaderUtil.checkGLError(TAG, "Draw");
-  }
-
-  private FloatBuffer toFloatBuffer(float[] data) {
-    FloatBuffer buff;
-    ByteBuffer bb = ByteBuffer.allocateDirect(data.length * BYTES_PER_FLOAT);
-    bb.order(ByteOrder.nativeOrder());
-    buff = bb.asFloatBuffer();
-    buff.put(data);
-    buff.position(0);
-    return buff;
   }
 }

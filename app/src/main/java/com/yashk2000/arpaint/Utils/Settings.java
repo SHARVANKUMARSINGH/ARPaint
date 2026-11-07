@@ -1,9 +1,11 @@
 package com.yashk2000.arpaint.Utils;
 
+import android.graphics.Color;
 import javax.vecmath.Vector3f;
 
 public class Settings {
-  private static Vector3f color = new Vector3f(1f, 1f, 1f);
+  private static volatile Vector3f color = new Vector3f(1.0f, 1.0f, 1.0f);
+  private static volatile float lineWidth = 0.33f;
   private static final float strokeDrawDistance = 0.125f;
   private static final float minDistance = 0.000625f;
   private static final float nearClip = 0.001f;
@@ -11,6 +13,14 @@ public class Settings {
 
   public static Vector3f getColor() {
     return color;
+  }
+
+  public static float getLineWidth() {
+    return lineWidth;
+  }
+
+  public static void setLineWidth(float width) {
+    lineWidth = Math.max(0.01f, width);
   }
 
   public static float getStrokeDrawDistance() {
@@ -29,7 +39,24 @@ public class Settings {
     return farClip;
   }
 
-  public static void setColor(Vector3f color) {
-    Settings.color = color;
+  public static void setColor(Vector3f newColor) {
+    if (newColor != null) {
+      Settings.color = new Vector3f(newColor);
+    }
+  }
+
+  public static void setColorFromInt(int intColor) {
+    float r = Color.red(intColor) / 255.0f;
+    float g = Color.green(intColor) / 255.0f;
+    float b = Color.blue(intColor) / 255.0f;
+    Settings.color = new Vector3f(r, g, b);
+  }
+
+  public static int getIntColor() {
+    Vector3f c = color;
+    int r = Math.min(255, Math.max(0, Math.round(c.x * 255.0f)));
+    int g = Math.min(255, Math.max(0, Math.round(c.y * 255.0f)));
+    int b = Math.min(255, Math.max(0, Math.round(c.z * 255.0f)));
+    return Color.rgb(r, g, b);
   }
 }

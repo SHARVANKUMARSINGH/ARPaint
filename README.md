@@ -1,58 +1,59 @@
-<img height='120' src="https://user-images.githubusercontent.com/41234408/82045045-09cac580-96cc-11ea-833d-7ad1e3cdaff4.png" align="left" hspace="1" vspace="1">
+# ARPaint 2.0 :paintbrush:
 
-# ARPaint :paintbrush: 
+An augmented reality Android application using [Google ARCore](https://developers.google.com/ar) and [Jetpack Compose](https://developer.android.com/jetpack/compose) that enables painting in real 3D space on a live camera feed.
 
-An android app which uses [Google ARCore](https://developers.google.com/ar) to allow user to paint on a camera feed. You can try out the app by downloading the APK from [here](https://github.com/yashk2000/ARPaint/blob/master/app/app-debug.apk) :rocket:.
+Revamped and modernized with **Jetpack Compose**, **Material 3 GUI**, and **hardware-accelerated MP4 Video Recording**.
 
-## Features Implemented :fire: 
+---
 
-- Draw anywhere on the canvas. The canvas being the camera feed :camera: 
-- Change line thickness :straight_ruler: 
-- Change line color :art: 
-- Clear the entire screen :pencil2:
-- Undo last move :arrow_backward:
+## What's New in 2.0 :rocket:
 
-## Screenshots :bar_chart: 
+- **Video Recording & Gallery Export** :movie_camera:
+  - Added a dedicated Record button in the UI.
+  - Live recording indicator with pulsing animation and elapsed time badge.
+  - Automatically captures the combined AR scene (camera feed + 3D drawn strokes) at full device resolution using hardware H.264/AVC encoding.
+  - Exports directly to Android's `Movies/ARPaint/` media store for immediate viewing in Gallery and Google Photos.
+  - Post-recording popup with quick "Share" and "Play" buttons.
 
-<p float="left">
-  <img src="https://user-images.githubusercontent.com/41234408/82045593-f9ffb100-96cc-11ea-82c2-d15c2e7d8d2a.png" width="250" />
-  <img src="https://user-images.githubusercontent.com/41234408/82045663-17cd1600-96cd-11ea-9e47-57a59aaf2d62.png" width="250" /> 
-  <img src="https://user-images.githubusercontent.com/41234408/82045729-36331180-96cd-11ea-9768-0be3bc326183.png" width="250" />
-   <img src="https://user-images.githubusercontent.com/41234408/82045795-52cf4980-96cd-11ea-951b-fa34967cc7be.png" width="250" />
-  <img src="https://user-images.githubusercontent.com/41234408/82045957-9b870280-96cd-11ea-906b-ae3ad71a88cb.png" width="250" /> 
-  <img src="https://user-images.githubusercontent.com/41234408/82046031-c6715680-96cd-11ea-9b16-378adedaebb1.png" width="250" />
-</p>
+- **Jetpack Compose & Material 3 GUI** :sparkles:
+  - Fully migrated overlay UI to Jetpack Compose with Material 3 styling.
+  - Modern bottom floating action dock with glassmorphism surface.
+  - AR Tracking Status pill (Active / Detecting surfaces / Paused) with live pulsing indicator.
 
-***Disclaimer: Do not mind the drawings in the screenshots, I'm not good at drawing.***
+- **Modern Popups with Close Buttons** :white_check_mark:
+  - **Color Picker Popup**: Beautiful Material 3 dialog with 16 preset color chips, RGB sliders, hex code readout, live swatch preview, and an explicit **Close button**.
+  - **Line Thickness Popup**: Real-time live stroke canvas preview, quick preset chips (Fine, Medium, Thick, Marker), smooth slider, and an explicit **Close button**.
+  - **Clear Canvas Confirmation Dialog**: Safe confirmation prompt with Cancel (Close) and Clear All options.
+  - **Video Saved Dialog**: Preview card with direct Share, Play, and Close actions.
 
-## Development Setup :triangular_ruler:
+- **Major Stability & Performance Fixes** :shield:
+  - **Fixed `BadTokenException`**: Replaced legacy detached context popups with native Compose dialogs.
+  - **Fixed `IndexOutOfBoundsException` (-1)**: Added bounds checking when starting strokes and undoing moves.
+  - **Fixed `ConcurrentModificationException`**: Synchronized stroke data structures between UI touch inputs and OpenGL rendering threads.
+  - **Fixed Direct Buffer Memory Leak**: Reused vertex direct buffers in `LineShaderRenderer` instead of allocating new native buffers every frame.
+  - **Fixed In-Place Touch Mutation**: Corrected `LineUtils.screenPointToRay` to prevent mutating incoming coordinate vectors.
+  - **Safe ARCore Lifecycle**: Graceful handling of ARCore installation prompts, missing camera permissions, and device compatibility checks.
 
-Before you begin, you should have already downloaded the Android Studio SDK and set it up correctly. You can find a guide on how to do this here: [Setting up Android Studio](http://developer.android.com/sdk/installing/index.html?pkg=studio)
+---
 
-### Setting up the Android Project :black_nib:
+## Core Features :fire:
 
-1. Download the project source. You can do this either by forking and cloning the repository (recommended if you plan on pushing changes) or by downloading it as a ZIP file and extracting it.
+- Draw in real-time 3D space anchored to the physical world :camera:
+- Change line thickness dynamically with live preview :straight_ruler:
+- Custom color palette with presets & RGB tuning :art:
+- Record AR videos and save them to your device :video_camera:
+- Undo strokes and clear canvas :arrow_backward:
+- Full-screen immersive AR with Material 3 controls :iphone:
 
-2. Install the NDK in Android Studio.
+---
 
-3. Open Android Studio, you will see a **Welcome to Android** window. Under Quick Start, select *Import Project (Eclipse ADT, Gradle, etc.)*
+## Tech Stack & Dependencies :gear:
 
-4. Navigate to the directory where you saved the ARPaint project, select the root folder of the project (the folder named "ARPaint"), and hit OK. Android Studio should now begin building the project with Gradle.
-
-5. Once this process is complete and Android Studio opens, check the Console for any build errors.
-
-    - *Note:* If you receive a Gradle sync error titled, "failed to find ...", you should click on the link below the error message (if available) that says *Install missing platform(s) and sync project* and allow Android studio to fetch you what is missing.
-
-7. You will also need to setup Android NDK. If a build error due to NDK persists, try replacing ndk with ndk version 20 from [ndk-archives](https://developer.android.com/ndk/downloads/older_releases). Once all build errors have been resolved, you should be all set to build the app and test it.
-
-8. To Build the app, go to *Build > Make Project* (or alternatively press the Make Project icon in the toolbar).
-
-9. If the app was built successfully, you can test it by running it on either a real device or an emulated one by going to *Run > Run 'app'* or pressing the Run icon in the toolbar.
-
-## Learning about ARCore :mortar_board:
-
-Here are a few resources you can use to learn about ARCore:
-
-- [https://developers.google.com/ar](https://developers.google.com/ar)
-- [Google Codelabs](https://codelabs.developers.google.com/)
-- [https://developers.google.com/ar/develop/java/quickstart](https://developers.google.com/ar/develop/java/quickstart)
+- **Language:** Kotlin & Java
+- **UI Framework:** Jetpack Compose + Material 3
+- **AR Engine:** Google ARCore 1.41.0
+- **Rendering:** OpenGL ES 2.0 (`GLSurfaceView`)
+- **Video Encoding:** `MediaRecorder` + EGL Window Surface (H.264 / MP4)
+- **Minimum SDK:** 24 (Android 7.0)
+- **Target SDK:** 34 (Android 14)
+- **Build System:** Gradle 8.4 with Android Gradle Plugin 8.2.2

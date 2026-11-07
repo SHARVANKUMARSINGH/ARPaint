@@ -2,11 +2,9 @@ package com.yashk2000.arpaint.Rendering;
 
 import javax.vecmath.Vector3f;
 
-/** BiquadFilter is a object for easily lowpass filtering incomming values. */
+/** BiquadFilter is an object for easily lowpass filtering incoming values. */
 public class BiquadFilter {
-  private Vector3f val = new Vector3f();
-
-  private BiquadFilterInstance[] inst = new BiquadFilterInstance[3];
+  private final BiquadFilterInstance[] inst = new BiquadFilterInstance[3];
 
   public BiquadFilter(double Fc) {
     for (int i = 0; i < 3; i++) {
@@ -14,21 +12,37 @@ public class BiquadFilter {
     }
   }
 
-  public Vector3f update(Vector3f in) {
-    val.x = (float) inst[0].process(in.x);
-    val.y = (float) inst[1].process(in.y);
-    val.z = (float) inst[2].process(in.z);
-    return val;
+  public synchronized Vector3f update(Vector3f in) {
+    if (in == null) {
+      return new Vector3f(0, 0, 0);
+    }
+    float x = (float) inst[0].process(in.x);
+    float y = (float) inst[1].process(in.y);
+    float z = (float) inst[2].process(in.z);
+    return new Vector3f(x, y, z);
   }
 
-  private class BiquadFilterInstance {
+  public synchronized void reset(Vector3f initialValue) {
+    if (initialValue != null) {
+      for (int i = 0; i < 3; i++) {
+        inst[i].reset(i == 0 ? initialValue.x : (i == 1 ? initialValue.y : initialValue.z));
+      }
+    }
+  }
+
+  private static class BiquadFilterInstance {
     double a0, a1, a2, b1, b2;
-    double Fc = 0.5, Q = 0.707, peakGain = 0.0;
+    double Fc = 0.5, Q = 0.707;
     double z1 = 0.0, z2 = 0.0;
 
     BiquadFilterInstance(double fc) {
       Fc = fc;
       calcBiquad();
+    }
+
+    void reset(double initial) {
+      z1 = initial * (1.0 - a0);
+      z2 = initial * (a2 - b2);
     }
 
     double process(double in) {
@@ -39,14 +53,13 @@ public class BiquadFilter {
     }
 
     void calcBiquad() {
-      double norm;
       double K = Math.tan(Math.PI * Fc);
-      norm = 1 / (1 + K / Q + K * K);
+      double norm = 1.0 / (1.0 + K / Q + K * K);
       a0 = K * K * norm;
-      a1 = 2 * a0;
+      a1 = 2.0 * a0;
       a2 = a0;
-      b1 = 2 * (K * K - 1) * norm;
-      b2 = (1 - K / Q + K * K) * norm;
+      b1 = 2.0 * (K * K - 1.0) * norm;
+      b2 = (1.0 - K / Q + K * K) * norm;
     }
   }
 }
