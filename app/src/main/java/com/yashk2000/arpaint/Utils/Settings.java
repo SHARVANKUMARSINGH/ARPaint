@@ -7,6 +7,8 @@ public class Settings {
   private static volatile Vector3f color = new Vector3f(1.0f, 1.0f, 1.0f);
   private static volatile float lineWidth = 0.33f;
   private static volatile boolean shadowsEnabled = true;
+  private static volatile boolean physicsEnabled = false;
+
   private static final float strokeDrawDistance = 0.125f;
   private static final float minDistance = 0.000625f;
   private static final float nearClip = 0.001f;
@@ -30,6 +32,14 @@ public class Settings {
 
   public static void setShadowsEnabled(boolean enabled) {
     shadowsEnabled = enabled;
+  }
+
+  public static boolean isPhysicsEnabled() {
+    return physicsEnabled;
+  }
+
+  public static void setPhysicsEnabled(boolean enabled) {
+    physicsEnabled = enabled;
   }
 
   public static float getStrokeDrawDistance() {

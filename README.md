@@ -37,10 +37,11 @@
 | **User Interface** | Legacy Support Views & Static XML | 🎨 **Jetpack Compose + Material 3** |
 | **Video Recording** | ❌ Not available | 🎥 **Hardware H.264 / AVC MP4 with EGL Mirroring** |
 | **3D Shading & Shadows** | Flat 2D unshaded lines, no shadows | 🌟 **Volumetric 3D cylindrical lighting, specular sheen & real-time drop shadows** |
+| **Real-Time 3D Physics** | ❌ Completely static | ⚡ **Gravity, bounce, friction, rotational torque & floor collisions** |
 | **Stroke Persistence** | ⚠️ Changes reset all existing strokes | 💾 **Permanent per-stroke thickness & color preservation** |
 | **App Stability** | ⚠️ Frequent crashes (`BadToken`, IndexOutOfBounds, etc.) | 🛡️ **Zero-crash architecture, safe bounds & thread-safe** |
 | **Memory Performance** | ⚠️ Native buffer leaks on every frame | ⚡ **Reused direct byte buffers, zero memory leaks** |
-| **Popups & Dialogs** | Detached popups with missing close actions | ✨ **Modern Compose dialogs with instant save & explicit Close buttons** |
+| **Popups & Dialogs** | Detached popups with missing close actions | ✨ **Modern Compose dialogs with smooth sliding, presets & explicit Close buttons** |
 | **Color & Stroke Pickers** | Basic preset buttons | 🎨 **16 Presets + fine RGB sliders + 3D live canvas preview** |
 | **AR Engine** | Obsolete ARCore 1.x SDK | 🚀 **Google ARCore 1.41.0 on Android 14 (API 34)** |
 | **Build Pipeline** | Gradle 4.10 / AGP 3.2 | ⚙️ **Gradle 8.4 / AGP 8.2.2 / JDK 17 CI/CD** |
@@ -48,6 +49,14 @@
 ---
 
 ## ✨ Key Features
+
+### ⚡ Real-Time 3D Physics & Gravity Engine
+- **Dedicated Physics ON/OFF Dock Button**: Toggle full 3D physics on your artwork with a single tap.
+- **Gravity Simulation**: When physics is activated, drawings experience downward gravity ($g = -2.8\text{ m/s}^2$) and fall gracefully toward the real world floor.
+- **ARCore Floor Detection & Elastic Bounce**: Strokes detect horizontal floor and table planes in your room, bouncing with restitution and surface friction.
+- **Rotational Tumbling & Torque**: Contact with the floor creates realistic angular torque, tipping and resting 3D sculptures flat on surfaces.
+- **Interactive Hand Drawing**: Strokes currently being drawn with your finger remain in your hand—as soon as you lift your finger, the drawing drops and bounces!
+- **One-Tap Float Back**: Tap the "Reset to Air" button to effortlessly return all fallen sculptures back to their original mid-air 3D coordinates.
 
 ### 🌟 3D Volumetric Lighting & Real-Time Ground Shadows
 - **Real-Time 3D Drop Shadows**: Strokes cast authentic soft contact shadows downward onto the ground and real-world surfaces with realistic penumbra falloff.

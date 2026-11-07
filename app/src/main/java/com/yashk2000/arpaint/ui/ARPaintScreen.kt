@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,16 +45,19 @@ fun ARPaintScreen(
     currentColor: Color,
     currentThickness: Float,
     isRecording: Boolean,
+    isPhysicsActive: Boolean = false,
     onColorChanged: (Color) -> Unit,
     onThicknessChanged: (Float) -> Unit,
+    onTogglePhysics: () -> Unit = {},
+    onResetPhysics: (() -> Unit)? = null,
     onUndo: () -> Unit,
     onClear: () -> Unit,
     onToggleRecording: () -> Unit,
     savedVideoFile: File?,
     savedVideoUri: Uri?,
     onDismissVideoSaved: () -> Unit,
-    errorMessage: String?,
-    onDismissError: () -> Unit
+    errorMessage: String? = null,
+    onDismissError: () -> Unit = {}
 ) {
     var showColorPicker by remember { mutableStateOf(false) }
     var showThicknessPicker by remember { mutableStateOf(false) }
@@ -139,7 +141,7 @@ fun ARPaintScreen(
                 }
             }
 
-            // Top-right actions: Undo & Clear
+            // Top-right actions: Reset to Air, Undo & Clear
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = Color.Black.copy(alpha = 0.55f),
@@ -149,6 +151,23 @@ fun ARPaintScreen(
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Reset to Air button (when physics is active)
+                    if (isPhysicsActive && onResetPhysics != null) {
+                        IconButton(
+                            onClick = onResetPhysics,
+                            enabled = strokeCount > 0,
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Float Back to Air",
+                                tint = if (strokeCount > 0) Color(0xFF00E5FF) else Color.White.copy(alpha = 0.3f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(2.dp))
+                    }
+
                     // Undo Button
                     IconButton(
                         onClick = onUndo,
@@ -236,36 +255,36 @@ fun ARPaintScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(bottom = 24.dp, start = 20.dp, end = 20.dp),
+                .padding(bottom = 24.dp, start = 16.dp, end = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 shape = RoundedCornerShape(36.dp),
-                color = Color.Black.copy(alpha = 0.65f),
+                color = Color.Black.copy(alpha = 0.68f),
                 tonalElevation = 12.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Color Picker Button
+                    // 1. Color Picker Button
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(CircleShape)
                             .clickable { showColorPicker = true }
-                            .padding(6.dp)
+                            .padding(4.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(38.dp)
                                 .clip(CircleShape)
                                 .background(currentColor)
                                 .border(2.dp, Color.White, CircleShape)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = "Color",
                             style = MaterialTheme.typography.labelSmall,
@@ -274,7 +293,38 @@ fun ARPaintScreen(
                         )
                     }
 
-                    // Main Giant Record Button
+                    // 2. Line Thickness Button
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { showThicknessPicker = true }
+                            .padding(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Brush,
+                                contentDescription = "Thickness",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = String.format(Locale.US, "%.1fx", currentThickness),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    // 3. Main Center Record Button
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -294,7 +344,7 @@ fun ARPaintScreen(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(64.dp)
+                                .size(58.dp)
                                 .scale(if (isRecording) glowScale else 1.0f)
                                 .clip(CircleShape)
                                 .background(
@@ -309,24 +359,22 @@ fun ARPaintScreen(
                                 .clickable { onToggleRecording() }
                         ) {
                             if (isRecording) {
-                                // Stop icon (rounded square)
                                 Box(
                                     modifier = Modifier
-                                        .size(20.dp)
+                                        .size(18.dp)
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(Color.White)
                                 )
                             } else {
-                                // Camera / Record dot icon
                                 Icon(
                                     imageVector = Icons.Default.Videocam,
                                     contentDescription = "Record Video",
                                     tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = if (isRecording) "Stop" else "Record",
                             style = MaterialTheme.typography.labelSmall,
@@ -336,33 +384,56 @@ fun ARPaintScreen(
                         )
                     }
 
-                    // Line Thickness Button
+                    // 4. Physics Button (ON / OFF)
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable { showThicknessPicker = true }
-                            .padding(6.dp)
+                            .clickable { onTogglePhysics() }
+                            .padding(4.dp)
                     ) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "physicsPulse")
+                        val physicsGlowScale by infiniteTransition.animateFloat(
+                            initialValue = 0.95f,
+                            targetValue = 1.08f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(800, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "physicsGlow"
+                        )
+
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(38.dp)
+                                .scale(if (isPhysicsActive) physicsGlowScale else 1.0f)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.15f)),
+                                .background(
+                                    if (isPhysicsActive)
+                                        Brush.linearGradient(listOf(Color(0xFF00E5FF), Color(0xFF00E676)))
+                                    else
+                                        Brush.linearGradient(listOf(Color.White.copy(alpha = 0.15f), Color.White.copy(alpha = 0.10f)))
+                                )
+                                .border(
+                                    width = if (isPhysicsActive) 2.dp else 1.dp,
+                                    color = if (isPhysicsActive) Color.White else Color.White.copy(alpha = 0.25f),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Brush,
-                                contentDescription = "Thickness",
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp)
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Physics Gravity",
+                                tint = if (isPhysicsActive) Color.Black else Color.White,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = String.format(Locale.US, "%.1fx", currentThickness),
+                            text = if (isPhysicsActive) "Phys ON" else "Phys OFF",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
+                            fontWeight = if (isPhysicsActive) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isPhysicsActive) Color(0xFF00E5FF) else Color.White.copy(alpha = 0.8f),
                             fontSize = 11.sp
                         )
                     }
@@ -378,7 +449,7 @@ fun ARPaintScreen(
                 initialColor = currentColor,
                 onColorSelected = { newColor ->
                     onColorChanged(newColor)
-                    showColorPicker = false
+                    // Keep dialog open so user can adjust RGB sliders and presets freely!
                 },
                 onDismiss = { showColorPicker = false }
             )
@@ -391,7 +462,7 @@ fun ARPaintScreen(
                 currentColor = currentColor,
                 onThicknessSelected = { newThickness ->
                     onThicknessChanged(newThickness)
-                    showThicknessPicker = false
+                    // Keep dialog open so user can slide smoothly and see preview!
                 },
                 onDismiss = { showThicknessPicker = false }
             )

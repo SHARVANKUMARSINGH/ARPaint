@@ -88,10 +88,13 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
     private val strokeCountCompose = mutableIntStateOf(0)
     private val currentColorCompose = mutableStateOf(Color.White)
     private val currentThicknessCompose = mutableFloatStateOf(0.33f)
+    private val isPhysicsActiveCompose = mutableStateOf(false)
     private val isRecordingCompose = mutableStateOf(false)
     private val savedVideoFileCompose = mutableStateOf<File?>(null)
     private val savedVideoUriCompose = mutableStateOf<android.net.Uri?>(null)
     private val errorMessageCompose = mutableStateOf<String?>(null)
+
+    private var lastPhysicsTime: Long = 0L
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -153,17 +156,38 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                         currentColor = currentColorCompose.value,
                         currentThickness = currentThicknessCompose.floatValue,
                         isRecording = isRecordingCompose.value,
+                        isPhysicsActive = isPhysicsActiveCompose.value,
                         onColorChanged = { newColor ->
                             currentColorCompose.value = newColor
                             Settings.setColorFromInt(newColor.toArgb())
                             lineShaderRenderer.bNeedsUpdate.set(true)
-                            sharedPreferences.edit().putInt("StrokeColorInt", newColor.toArgb()).apply()
+                            sharedPreferences.edit().putInt("StrokeColorInt", newColor.toArgb()).commit()
                         },
                         onThicknessChanged = { newThickness ->
                             currentThicknessCompose.floatValue = newThickness
                             Settings.setLineWidth(newThickness)
                             lineShaderRenderer.bNeedsUpdate.set(true)
-                            sharedPreferences.edit().putFloat("LineWidthFloat", newThickness).apply()
+                            sharedPreferences.edit().putFloat("LineWidthFloat", newThickness).commit()
+                        },
+                        onTogglePhysics = {
+                            val newPhys = !Settings.isPhysicsEnabled()
+                            Settings.setPhysicsEnabled(newPhys)
+                            isPhysicsActiveCompose.value = newPhys
+                            if (newPhys) {
+                                Toast.makeText(this@MainActivity, "Gravity & Physics ON: Drawings fall & bounce!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(this@MainActivity, "Physics OFF: Drawings frozen in 3D space", Toast.LENGTH_SHORT).show()
+                            }
+                            lineShaderRenderer.bNeedsUpdate.set(true)
+                        },
+                        onResetPhysics = {
+                            synchronized(strokesLock) {
+                                for (stroke in strokes) {
+                                    stroke.resetPhysics()
+                                }
+                            }
+                            lineShaderRenderer.bNeedsUpdate.set(true)
+                            Toast.makeText(this@MainActivity, "Drawings returned to mid-air positions", Toast.LENGTH_SHORT).show()
                         },
                         onUndo = {
                             undoMove.set(true)
@@ -493,6 +517,33 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                 updateStrokeCountUi()
             }
 
+            // 3D Physics Simulation Update
+            if (Settings.isPhysicsEnabled()) {
+                val floorY = detectFloorHeight(frame)
+                var anyMoved = false
+                val currentTime = System.nanoTime()
+                val dt = if (lastPhysicsTime != 0L) {
+                    ((currentTime - lastPhysicsTime) / 1_000_000_000.0f).coerceIn(0.005f, 0.05f)
+                } else 0.016f
+                lastPhysicsTime = currentTime
+
+                synchronized(strokesLock) {
+                    val activeStrokeCount = if (touchDown.get() && strokes.isNotEmpty()) strokes.size - 1 else strokes.size
+                    for (i in 0 until activeStrokeCount) {
+                        val stroke = strokes[i]
+                        if (stroke.stepPhysics(floorY, dt)) {
+                            anyMoved = true
+                        }
+                    }
+                }
+
+                if (anyMoved) {
+                    lineShaderRenderer.bNeedsUpdate.set(true)
+                }
+            } else {
+                lastPhysicsTime = 0L
+            }
+
             if (lineShaderRenderer.bNeedsUpdate.get()) {
                 synchronized(strokesLock) {
                     lineShaderRenderer.updateStrokes(strokes)
@@ -583,5 +634,31 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
         Matrix.translateM(m, 0, t[0], t[1], t[2])
         Matrix.rotateM(m, 0, Math.toDegrees(rotate).toFloat(), 0f, 1f, 0f)
         return m
+    }
+
+    private fun detectFloorHeight(frame: Frame?): Float {
+        val currentSession = session ?: return -1.2f
+        var bestFloorY: Float? = null
+        try {
+            for (plane in currentSession.getAllTrackables(Plane::class.java)) {
+                if (plane.type == Plane.Type.HORIZONTAL_UPWARD_FACING &&
+                    plane.trackingState == TrackingState.TRACKING
+                ) {
+                    val y = plane.centerPose.ty()
+                    if (bestFloorY == null || y < bestFloorY) {
+                        bestFloorY = y
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore fallback
+        }
+
+        if (bestFloorY != null) {
+            return bestFloorY
+        }
+
+        val cameraPose = frame?.camera?.pose
+        return if (cameraPose != null) cameraPose.ty() - 1.1f else -1.2f
     }
 }
