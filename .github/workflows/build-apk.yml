@@ -28,10 +28,12 @@ jobs:
 
       - name: Patch legacy JCenter & Jacoco issues
         run: |
-          # Remove dead jacoco-android plugin references from build files
+          # Remove dead jacoco-android plugin references
           sed -i '/jacoco-android/d' build.gradle app/build.gradle || true
-          # Inject mavenCentral() alongside jcenter() so legacy dependencies can still resolve
-          sed -i 's/jcenter()/mavenCentral()\n        jcenter()/g' build.gradle app/build.gradle || true
+          # Remove the jacoco { ... } configuration block in app/build.gradle
+          sed -i '/jacoco\s*{/,/}/d' app/build.gradle || true
+          # Inject mavenCentral() and JCenter mirror so legacy dependencies resolve
+          sed -i 's/jcenter()/mavenCentral()\n        maven { url "https:\/\/://aliyun.com\/repository\/jcenter" }\n        jcenter()/g' build.gradle app/build.gradle || true
 
       - name: Switch to JDK 8 for Legacy Gradle Build
         uses: actions/setup-java@v4
