@@ -26,6 +26,13 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/20.0.5594570" >> $GITHUB_ENV
           echo "ndk.dir=$ANDROID_HOME/ndk/20.0.5594570" >> local.properties
 
+      - name: Patch legacy JCenter & Jacoco issues
+        run: |
+          # Remove dead jacoco-android plugin references from build files
+          sed -i '/jacoco-android/d' build.gradle app/build.gradle || true
+          # Inject mavenCentral() alongside jcenter() so legacy dependencies can still resolve
+          sed -i 's/jcenter()/mavenCentral()\n        jcenter()/g' build.gradle app/build.gradle || true
+
       - name: Switch to JDK 8 for Legacy Gradle Build
         uses: actions/setup-java@v4
         with:
