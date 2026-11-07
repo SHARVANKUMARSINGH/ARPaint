@@ -150,8 +150,9 @@ public class LineShaderRenderer {
     int totalPoints = 0;
     for (int i = 0; i < strokes.size(); i++) {
       Stroke stroke = strokes.get(i);
-      if (stroke != null && stroke.getPoints().size() >= 2) {
-        totalPoints += stroke.getPoints().size() * 2 + 2;
+      if (stroke != null && !stroke.getPoints().isEmpty()) {
+        int ptCount = Math.max(2, stroke.getPoints().size());
+        totalPoints += ptCount * 2 + 2;
       }
     }
 
@@ -165,7 +166,7 @@ public class LineShaderRenderer {
     int offset = 0;
     for (int i = 0; i < strokes.size(); i++) {
       Stroke stroke = strokes.get(i);
-      if (stroke != null && stroke.getPoints().size() >= 2) {
+      if (stroke != null && !stroke.getPoints().isEmpty()) {
         offset = addLine(stroke.getPoints(), stroke.getColor(), stroke.getLineWidth(), offset);
       }
     }
@@ -220,20 +221,28 @@ public class LineShaderRenderer {
   }
 
   private int addLine(List<Vector3f> line, Vector3f color, float strokeWidth, int offset) {
-    if (line == null || line.size() < 2) return offset;
+    if (line == null || line.isEmpty()) return offset;
 
-    int lineSize = line.size();
+    List<Vector3f> points = line;
+    if (line.size() == 1) {
+      Vector3f p = line.get(0);
+      points = new java.util.ArrayList<>(2);
+      points.add(p);
+      points.add(new Vector3f(p.x + 0.0005f, p.y + 0.0005f, p.z));
+    }
+
+    int lineSize = points.size();
     int ii = offset;
 
     for (int i = 0; i < lineSize; i++) {
       int iGood = i;
       int i_m_1 = Math.max(0, iGood - 1);
       int i_p_1 = Math.min(lineSize - 1, iGood + 1);
-      float c = ((float) i / (float) (lineSize - 1));
+      float c = (lineSize > 1) ? ((float) i / (float) (lineSize - 1)) : 0f;
 
-      Vector3f current = line.get(iGood);
-      Vector3f previous = line.get(i_m_1);
-      Vector3f next = line.get(i_p_1);
+      Vector3f current = points.get(iGood);
+      Vector3f previous = points.get(i_m_1);
+      Vector3f next = points.get(i_p_1);
 
       if (current == null || previous == null || next == null) continue;
 
@@ -375,6 +384,10 @@ public class LineShaderRenderer {
 
     Matrix.multiplyMM(mModelViewMatrix, 0, cameraView, 0, mModelMatrix, 0);
     Matrix.multiplyMM(mModelViewProjectionMatrix, 0, cameraPerspective, 0, mModelViewMatrix, 0);
+
+    GLES20.glDisable(GLES20.GL_CULL_FACE);
+    GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+    GLES20.glDepthFunc(GLES20.GL_LEQUAL);
 
     GLES20.glUseProgram(mProgramName);
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);

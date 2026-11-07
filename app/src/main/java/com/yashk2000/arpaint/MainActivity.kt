@@ -575,6 +575,9 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                 Settings.getLineWidth()
             )
             stroke.addPoint(lastPoint)
+            // Immediately add a micro-offset so single taps and stroke beginnings render instantly
+            val microPoint = Vector3f(lastPoint.x + 0.0002f, lastPoint.y + 0.0002f, lastPoint.z)
+            stroke.addPoint(microPoint)
             strokes.add(stroke)
         }
         updateStrokeCountUi()

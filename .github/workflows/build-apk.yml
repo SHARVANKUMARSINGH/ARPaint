@@ -45,11 +45,12 @@ jobs:
           body: |
             ### ARPaint 2.0 Release 🚀
             
-            - **Jetpack Compose & Material 3**: Modern, sleek interface with bottom floating dock and AR status indicator.
+            - **Restored 3D Drawing**: Fixed GLSL fragment shader smoothstep bug that was discarding stroke fragments. 3D ribbon strokes now render with vibrant colors, Blinn-Phong specular shine, and real-time drop shadows.
+            - **Real-Time AR Physics Mode**: Toggle "Phys ON / OFF" to let drawn 3D strokes fall under gravity, bounce off detected real-world floor planes, and come to a rest with realistic ground friction. "Float Back to Air" resets drawings.
+            - **Modern Color & Thickness Pickers**: Smooth RGB sliders and quick preset swatches with live preview and explicit Done / Close buttons (no premature dismissal).
+            - **Jetpack Compose & Material 3**: Sleek interface with bottom floating dock, AR status indicator, and intuitive controls.
             - **Video Recording**: Hardware-accelerated MP4 recording with direct save to `Movies/ARPaint/` and Gallery indexing.
-            - **Modern Popups with Close Button**: Color picker with RGB sliders, stroke thickness with live canvas preview, video saved dialog, and clear confirmation.
-            - **Stability & Crash Proof**: Fixed BadTokenException, native memory leaks, stroke concurrency issues, and ARCore lifecycle handling.
-            - **New App Icon**: Custom AR 3D pencil emblem.
+            - **Stability & Performance**: Zero native memory leaks, thread-safe stroke management, and resilient ARCore lifecycle handling.
             
             **Download the pre-compiled `app-debug.apk` below to install.**
           files: app/build/outputs/apk/debug/*.apk
