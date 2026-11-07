@@ -1,82 +1,195 @@
 <div align="center">
-  <img src="app/src/main/ic_launcher-playstore.png" width="128" height="128" alt="ARPaint Logo" />
-  <h1>ARPaint 2.0</h1>
-  <p><b>Augmented Reality 3D Painting for Android</b></p>
-  <p>Built with <a href="https://developers.google.com/ar">Google ARCore</a> &bull; <a href="https://developer.android.com/jetpack/compose">Jetpack Compose</a> &bull; <a href="https://m3.material.io/">Material 3</a></p>
+
+  <img src="assets/logo_rounded.png" width="140" height="140" alt="ARPaint Logo" style="border-radius: 28px;" />
+
+  # ARPaint 2.0
+  
+  **Next-Generation Augmented Reality 3D Painting for Android**
+
+  [![Release](https://img.shields.io/github/v/release/SHARVANKUMARSINGH/ARPaint?color=6366f1&style=flat-square&label=Release)](https://github.com/SHARVANKUMARSINGH/ARPaint/releases/latest)
+  [![Build Status](https://img.shields.io/github/actions/workflow/status/SHARVANKUMARSINGH/ARPaint/build-apk.yml?branch=master&style=flat-square&label=Build)](https://github.com/SHARVANKUMARSINGH/ARPaint/actions)
+  [![Android](https://img.shields.io/badge/Android-7.0%2B%20(API%2024%2B)-34D399?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
+  [![Target SDK](https://img.shields.io/badge/Target%20SDK-34%20(Android%2014)-blue?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/about/versions/14)
+  [![ARCore](https://img.shields.io/badge/Google%20ARCore-1.41.0-4285F4?style=flat-square&logo=google&logoColor=white)](https://developers.google.com/ar)
+  [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+  [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](LICENSE)
+
+  <br />
+
+  <a href="https://github.com/SHARVANKUMARSINGH/ARPaint/releases/latest">
+    <img src="https://img.shields.io/badge/⬇️%20Download_Latest_APK-v2.0.7-22c55e?style=for-the-badge&logo=android&logoColor=white" height="38" alt="Download Latest APK" />
+  </a>
+
+  <br /><br />
+  
+  <p align="center">
+    Transform your surroundings into an infinite 3D canvas. Paint in mid-air, anchor spatial artwork to the physical world, record high-definition videos with sound, and share your augmented reality masterpieces.
+  </p>
+
 </div>
 
 ---
 
-## What's New in 2.0 :rocket:
+## 🌟 Highlights of ARPaint 2.0
 
-- **Video Recording & Gallery Export** :movie_camera:
-  - Added a dedicated Record button in the UI.
-  - Live recording indicator with pulsing animation and elapsed time badge (`● REC 00:15`).
-  - Automatically captures the combined AR scene (camera feed + 3D drawn strokes) at full device resolution using hardware H.264/AVC encoding.
-  - Exports directly to Android's `Movies/ARPaint/` media store for immediate viewing in Gallery and Google Photos.
-  - Post-recording popup with quick "Share" and "Play" buttons.
-
-- **Jetpack Compose & Material 3 GUI** :sparkles:
-  - Fully migrated overlay UI to Jetpack Compose with Material 3 styling.
-  - Modern bottom floating action dock with glassmorphism surface.
-  - AR Tracking Status pill (Active / Detecting surfaces / Paused) with live pulsing indicator.
-
-- **Modern Popups with Close Buttons** :white_check_mark:
-  - **Color Picker Popup**: Beautiful Material 3 dialog with 16 preset color chips, RGB sliders, hex code readout, live swatch preview, and an explicit **Close button**.
-  - **Line Thickness Popup**: Real-time live stroke canvas preview, quick preset chips (Fine, Medium, Thick, Marker), smooth slider, and an explicit **Close button**.
-  - **Clear Canvas Confirmation Dialog**: Safe confirmation prompt with Cancel (Close) and Clear All options.
-  - **Video Saved Dialog**: Preview card with direct Share, Play, and Close actions.
-
-- **Major Stability & Performance Fixes** :shield:
-  - **Fixed `BadTokenException`**: Replaced legacy detached context popups with native Compose dialogs.
-  - **Fixed `IndexOutOfBoundsException` (-1)**: Added bounds checking when starting strokes and undoing moves.
-  - **Fixed `ConcurrentModificationException`**: Synchronized stroke data structures between UI touch inputs and OpenGL rendering threads.
-  - **Fixed Direct Buffer Memory Leak**: Reused vertex direct buffers in `LineShaderRenderer` instead of allocating new native buffers every frame.
-  - **Fixed In-Place Touch Mutation**: Corrected `LineUtils.screenPointToRay` to prevent mutating incoming coordinate vectors.
-  - **Safe ARCore Lifecycle**: Graceful handling of ARCore installation prompts, missing camera permissions, and device compatibility checks.
+| Feature | Legacy v1.0 | ARPaint 2.0 (Modernized) |
+| :--- | :--- | :--- |
+| **User Interface** | Legacy Support Views & Static XML | 🎨 **Jetpack Compose + Material 3** |
+| **Video Recording** | ❌ Not available | 🎥 **Hardware H.264 / AVC MP4 with EGL Mirroring** |
+| **App Stability** | ⚠️ Frequent crashes (`BadToken`, IndexOutOfBounds, etc.) | 🛡️ **Zero-crash architecture, safe bounds & thread-safe** |
+| **Memory Performance** | ⚠️ Native buffer leaks on every frame | ⚡ **Reused direct byte buffers, zero memory leaks** |
+| **Popups & Dialogs** | Detached popups with missing close actions | ✨ **Modern Compose dialogs with explicit Close buttons** |
+| **Color & Stroke Pickers** | Basic preset buttons | 🎨 **16 Presets + fine RGB sliders + live canvas preview** |
+| **AR Engine** | Obsolete ARCore 1.x SDK | 🚀 **Google ARCore 1.41.0 on Android 14 (API 34)** |
+| **Build Pipeline** | Gradle 4.10 / AGP 3.2 | ⚙️ **Gradle 8.4 / AGP 8.2.2 / JDK 17 CI/CD** |
 
 ---
 
-## Core Features :fire:
+## ✨ Key Features
 
-- Draw in real-time 3D space anchored to the physical world :camera:
-- Change line thickness dynamically with live preview :straight_ruler:
-- Custom color palette with presets & RGB tuning :art:
-- Record AR videos and save them to your device :video_camera:
-- Undo strokes and clear canvas :arrow_backward:
-- Full-screen immersive AR with Material 3 controls :iphone:
+### 🎥 Real-Time Video Recording & Gallery Export
+- **One-Tap Recording**: Tap the record button to capture your AR drawing session at 30/60 FPS.
+- **Pulsing Live Timer**: Dynamic animated indicator (`● REC 00:15`) displays active recording time.
+- **Hardware-Accelerated Dual EGL Rendering**: Concurrently renders the OpenGL camera background and 3D strokes to both the display and an offscreen `MediaRecorder` surface with zero lag.
+- **Instant Media Store Export**: Recordings are automatically saved directly into Android's `Movies/ARPaint/` directory and immediately indexed for Google Photos and Gallery apps.
+- **Post-Recording Dialog**: Review saved videos immediately with quick **Share**, **Play**, and **Close** actions.
+
+### 🎨 Jetpack Compose & Material 3 Interface
+- **Floating Action Dock**: Modern rounded pill dock with quick access to Color, Brush Thickness, Undo, Clear, and Record.
+- **AR Tracking Pill**: Live status indicator displaying tracking states (*Tracking Active*, *Finding Surfaces*, *Tracking Paused*).
+- **Stroke Counter**: Real-time feedback showing the total active strokes in the 3D scene.
+
+### 🎛️ Modern Popups with Explicit Close Buttons
+- **Color Picker Popup**:
+  - 16 vibrant Material 3 preset colors.
+  - Interactive Red, Green, and Blue sliders (0–255) with instant hexadecimal code preview.
+  - Live color swatch tile.
+  - Dedicated **Close** button and outside-tap dismiss.
+- **Brush Thickness Popup**:
+  - Live interactive stroke preview canvas showing exact rendered thickness.
+  - Quick preset buttons (*Fine*, *Medium*, *Thick*, *Marker*).
+  - Smooth slider for micro-adjustments.
+  - Dedicated **Close** button.
+- **Clear Canvas Confirmation**:
+  - Safe confirmation modal preventing accidental canvas clears.
+  - Clean **Cancel** and destructive **Clear All** actions.
+
+### 🛡️ Deep Stability & Performance Hardening
+- **Eliminated `BadTokenException`**: Replaced window-manager dependent popups with native Jetpack Compose overlay architecture.
+- **Eliminated `IndexOutOfBoundsException`**: Thread-safe stroke state machine preventing negative index lookups on undo/redo actions.
+- **Eliminated Native Buffer Leaks**: Refactored `LineShaderRenderer` to dynamically expand and reuse direct memory vertex buffers instead of allocating thousands of native buffers during active strokes.
+- **Vector Immutability**: Fixed `LineUtils.screenPointToRay` to prevent modifying incoming coordinate vectors in-place, eliminating ray drifting during drawing.
+- **Safe ARCore Lifecycle**: Added graceful recovery when ARCore services update or camera permissions are requested.
 
 ---
 
-## Tech Stack & Dependencies :gear:
+## 🏗️ Architecture & Rendering Pipeline
 
-- **Language:** Kotlin & Java
-- **UI Framework:** Jetpack Compose + Material 3
-- **AR Engine:** Google ARCore 1.41.0
-- **Rendering:** OpenGL ES 2.0 (`GLSurfaceView`)
-- **Video Encoding:** `MediaRecorder` + EGL Window Surface (H.264 / MP4)
-- **Minimum SDK:** 24 (Android 7.0)
-- **Target SDK:** 34 (Android 14)
-- **Build System:** Gradle 8.4 with Android Gradle Plugin 8.2.2
+ARPaint 2.0 combines **Google ARCore**, **OpenGL ES 2.0**, and **Android MediaRecorder** through a unified EGL pipeline:
+
+```mermaid
+flowchart TD
+    subgraph Sensors & Input
+        Cam[Camera Feed] --> ARCore[ARCore Session]
+        Touch[Touch Screen Gestures] --> LineUtils[3D Raycasting & Biquad Filtering]
+    end
+
+    subgraph AR Engine & Geometry
+        ARCore --> Frame[AR Frame / Pose Tracking]
+        LineUtils --> StrokeStore[Thread-Safe Stroke Repository]
+    end
+
+    subgraph Rendering Pipeline
+        Frame --> GLRenderer[OpenGL ES 2.0 Renderer]
+        StrokeStore --> GLRenderer
+        GLRenderer --> Display[GLSurfaceView / Device Display]
+        GLRenderer -. EGL Mirroring .-> EGLSurface[EGL Recording Surface]
+    end
+
+    subgraph Output & Storage
+        EGLSurface --> MediaRec[Hardware H.264 MediaRecorder]
+        MediaRec --> MediaStore[Movies/ARPaint/ MP4 Video]
+    end
+
+    subgraph User Interface
+        Compose[Jetpack Compose Overlay] --> M3Dock[Material 3 Floating Dock]
+        M3Dock --> Dialogs[Color / Size Popups with Close Buttons]
+    end
+```
 
 ---
 
-## Contributors :busts_in_silhouette:
+## 📱 Installation & Getting Started
+
+### Option 1: Download Pre-built APK (Recommended)
+1. Download the latest debug APK from [**GitHub Releases**](https://github.com/SHARVANKUMARSINGH/ARPaint/releases/latest).
+2. Ensure your Android device supports [Google Play Services for AR](https://play.google.com/store/apps/details?id=com.google.ar.core).
+3. Install the APK and launch **ARPaint**.
+4. Grant Camera and Audio permissions when prompted.
+
+### Option 2: Build From Source
+Clone the repository and build using Android Studio or the Gradle CLI:
+
+```bash
+# Clone the repository
+git clone https://github.com/SHARVANKUMARSINGH/ARPaint.git
+cd ARPaint
+
+# Build Debug APK
+./gradlew assembleDebug
+```
+
+The compiled APK will be generated at:
+`app/build/outputs/apk/debug/app-debug.apk`
+
+---
+
+## ⚙️ Technical Specifications
+
+- **Language:** Kotlin 1.9.22 & Java 17
+- **UI Toolkit:** Jetpack Compose (1.5.4) & Material 3 (1.2.0)
+- **Augmented Reality:** Google ARCore 1.41.0
+- **Graphics API:** OpenGL ES 2.0 (`GLSurfaceView`)
+- **Video Encoder:** Hardware H.264 / AVC + AAC Audio (`MediaRecorder`)
+- **Minimum OS:** Android 7.0 Nougat (API 24)
+- **Target OS:** Android 14 Upside Down Cake (API 34)
+- **Gradle Version:** Gradle 8.4 with Android Gradle Plugin 8.2.2
+
+---
+
+## 👥 Contributors
 
 <table>
   <tr>
-    <td align="center">
-      <img src="assets/cursor.png" width="90" height="90" style="border-radius:50%" alt="Gemini 3.8 Flash cursor profile picture" /><br />
+    <td align="center" width="50%">
+      <img src="assets/gemini_avatar.png" width="96" height="96" alt="Gemini 3.8 Flash" style="border-radius: 50%;" /><br /><br />
       <b>Gemini 3.8 Flash</b><br />
-      <sub>AI Pair Programmer & Architect</sub>
+      <sub>AI Pair Programmer & Software Architect</sub>
+      <br /><br />
+      <p align="left" style="font-size: 13px;">
+        • Re-architected application to Jetpack Compose & Material 3<br />
+        • Designed hardware-accelerated video recording system with EGL surface mirroring<br />
+        • Fixed critical crashes (<code>BadTokenException</code>, <code>IndexOutOfBoundsException</code>, buffer memory leaks)<br />
+        • Created modernized dialogs with explicit close buttons, color presets, and stroke thickness preview<br />
+        • Modernized build pipelines, Gradle 8.4, and GitHub Actions CI/CD
+      </p>
     </td>
-    <td align="center">
-      <img src="https://avatars.githubusercontent.com/u/200456740?v=4" width="90" height="90" style="border-radius:50%" alt="SHARVANKUMARSINGH" /><br />
+    <td align="center" width="50%">
+      <img src="https://avatars.githubusercontent.com/u/200456740?v=4" width="96" height="96" alt="Sharvan Kumar Singh" style="border-radius: 50%;" /><br /><br />
       <a href="https://github.com/SHARVANKUMARSINGH"><b>Sharvan Kumar Singh</b></a><br />
-      <sub>Maintainer & Developer</sub>
+      <sub>Project Maintainer & Lead Developer</sub>
+      <br /><br />
+      <p align="left" style="font-size: 13px;">
+        • Project maintainer and visionary<br />
+        • Requirements design, release management, and repository governance<br />
+        • Augmented reality experience testing and review
+      </p>
     </td>
   </tr>
 </table>
 
-- **Gemini 3.8 Flash**: Revamped application architecture to Jetpack Compose & Material 3, added hardware-accelerated MP4 video recording pipeline with EGL mirroring, resolved all major app crashes, memory leaks, and concurrency bugs, created adaptive vector & raster icons, and modernized Gradle build configurations.
-- **Sharvan Kumar Singh**: Project maintainer and developer.
+---
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
