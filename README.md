@@ -1,8 +1,9 @@
-# ARPaint 2.0 :paintbrush:
-
-An augmented reality Android application using [Google ARCore](https://developers.google.com/ar) and [Jetpack Compose](https://developer.android.com/jetpack/compose) that enables painting in real 3D space on a live camera feed.
-
-Revamped and modernized with **Jetpack Compose**, **Material 3 GUI**, and **hardware-accelerated MP4 Video Recording**.
+<div align="center">
+  <img src="app/src/main/ic_launcher-playstore.png" width="128" height="128" alt="ARPaint Logo" />
+  <h1>ARPaint 2.0</h1>
+  <p><b>Augmented Reality 3D Painting for Android</b></p>
+  <p>Built with <a href="https://developers.google.com/ar">Google ARCore</a> &bull; <a href="https://developer.android.com/jetpack/compose">Jetpack Compose</a> &bull; <a href="https://m3.material.io/">Material 3</a></p>
+</div>
 
 ---
 
@@ -10,7 +11,7 @@ Revamped and modernized with **Jetpack Compose**, **Material 3 GUI**, and **hard
 
 - **Video Recording & Gallery Export** :movie_camera:
   - Added a dedicated Record button in the UI.
-  - Live recording indicator with pulsing animation and elapsed time badge.
+  - Live recording indicator with pulsing animation and elapsed time badge (`● REC 00:15`).
   - Automatically captures the combined AR scene (camera feed + 3D drawn strokes) at full device resolution using hardware H.264/AVC encoding.
   - Exports directly to Android's `Movies/ARPaint/` media store for immediate viewing in Gallery and Google Photos.
   - Post-recording popup with quick "Share" and "Play" buttons.
@@ -57,3 +58,25 @@ Revamped and modernized with **Jetpack Compose**, **Material 3 GUI**, and **hard
 - **Minimum SDK:** 24 (Android 7.0)
 - **Target SDK:** 34 (Android 14)
 - **Build System:** Gradle 8.4 with Android Gradle Plugin 8.2.2
+
+---
+
+## Contributors :busts_in_silhouette:
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="assets/cursor.png" width="90" height="90" style="border-radius:50%" alt="Gemini 3.8 Flash cursor profile picture" /><br />
+      <b>Gemini 3.8 Flash</b><br />
+      <sub>AI Pair Programmer & Architect</sub>
+    </td>
+    <td align="center">
+      <img src="https://avatars.githubusercontent.com/u/200456740?v=4" width="90" height="90" style="border-radius:50%" alt="SHARVANKUMARSINGH" /><br />
+      <a href="https://github.com/SHARVANKUMARSINGH"><b>Sharvan Kumar Singh</b></a><br />
+      <sub>Maintainer & Developer</sub>
+    </td>
+  </tr>
+</table>
+
+- **Gemini 3.8 Flash**: Revamped application architecture to Jetpack Compose & Material 3, added hardware-accelerated MP4 video recording pipeline with EGL mirroring, resolved all major app crashes, memory leaks, and concurrency bugs, created adaptive vector & raster icons, and modernized Gradle build configurations.
+- **Sharvan Kumar Singh**: Project maintainer and developer.

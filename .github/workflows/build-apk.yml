@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # Required to create a GitHub Release and upload the APK
+  contents: write
 
 jobs:
   build:
@@ -34,14 +34,26 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: arpaint-debug-apk
+          name: arpaint-2.0-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
-      - name: Upload APK to GitHub Releases
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v2.0.${{ github.run_number }}
           name: "ARPaint 2.0 APK (Build #${{ github.run_number }})"
-          body: "Modernized ARPaint with Jetpack Compose, Material 3, Video Recording, and rock-solid stability."
+          body: |
+            ### ARPaint 2.0 Release 🚀
+            
+            - **Jetpack Compose & Material 3**: Modern, sleek interface with bottom floating dock and AR status indicator.
+            - **Video Recording**: Hardware-accelerated MP4 recording with direct save to `Movies/ARPaint/` and Gallery indexing.
+            - **Modern Popups with Close Button**: Color picker with RGB sliders, stroke thickness with live canvas preview, video saved dialog, and clear confirmation.
+            - **Stability & Crash Proof**: Fixed BadTokenException, native memory leaks, stroke concurrency issues, and ARCore lifecycle handling.
+            - **New App Icon**: Custom AR 3D pencil emblem.
+            
+            **Download the pre-compiled `app-debug.apk` below to install.**
           files: app/build/outputs/apk/debug/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
