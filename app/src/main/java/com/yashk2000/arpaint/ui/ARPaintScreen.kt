@@ -1,6 +1,7 @@
 package com.yashk2000.arpaint.ui
 
 import android.net.Uri
+import android.view.MotionEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,7 +59,8 @@ fun ARPaintScreen(
     savedVideoUri: Uri?,
     onDismissVideoSaved: () -> Unit,
     errorMessage: String? = null,
-    onDismissError: () -> Unit = {}
+    onDismissError: () -> Unit = {},
+    onCanvasTouch: ((action: Int, x: Float, y: Float) -> Unit)? = null
 ) {
     var showColorPicker by remember { mutableStateOf(false) }
     var showThicknessPicker by remember { mutableStateOf(false) }
@@ -83,6 +86,34 @@ fun ARPaintScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
+        // 0. Transparent canvas touch-capture layer across drawing area
+        if (onCanvasTouch != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull() ?: continue
+                                val pos = change.position
+                                when {
+                                    change.pressed && !change.previousPressed -> {
+                                        onCanvasTouch(MotionEvent.ACTION_DOWN, pos.x, pos.y)
+                                    }
+                                    change.pressed && change.previousPressed -> {
+                                        onCanvasTouch(MotionEvent.ACTION_MOVE, pos.x, pos.y)
+                                    }
+                                    !change.pressed && change.previousPressed -> {
+                                        onCanvasTouch(MotionEvent.ACTION_UP, pos.x, pos.y)
+                                    }
+                                }
+                            }
+                        }
+                    }
+            )
+        }
+
         // ================= TOP BAR =================
         Row(
             modifier = Modifier

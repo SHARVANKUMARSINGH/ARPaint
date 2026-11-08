@@ -207,6 +207,9 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                         errorMessage = errorMessageCompose.value,
                         onDismissError = {
                             errorMessageCompose.value = null
+                        },
+                        onCanvasTouch = { action, x, y ->
+                            handleCanvasTouch(action, x, y)
                         }
                     )
                 }
@@ -214,26 +217,59 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
         }
     }
 
-    private fun handleTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
+    private val isDrawingActive = AtomicBoolean(false)
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        val density = resources.displayMetrics.density
+        val topBarHeight = 90f * density
+        val bottomDockHeight = 145f * density
+        val screenH = resources.displayMetrics.heightPixels
+
+        val inDrawingArea = ev.y > topBarHeight && ev.y < (screenH - bottomDockHeight)
+
+        when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                lastTouch.set(Vector2f(event.x, event.y))
-                touchDown.set(true)
-                newStroke.set(true)
-                return true
+                if (inDrawingArea) {
+                    isDrawingActive.set(true)
+                    handleCanvasTouch(MotionEvent.ACTION_DOWN, ev.x, ev.y)
+                }
             }
             MotionEvent.ACTION_MOVE -> {
-                lastTouch.set(Vector2f(event.x, event.y))
+                if (isDrawingActive.get()) {
+                    handleCanvasTouch(MotionEvent.ACTION_MOVE, ev.x, ev.y)
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (isDrawingActive.get()) {
+                    isDrawingActive.set(false)
+                    handleCanvasTouch(MotionEvent.ACTION_UP, ev.x, ev.y)
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun handleTouchEvent(event: MotionEvent): Boolean {
+        handleCanvasTouch(event.actionMasked, event.x, event.y)
+        return true
+    }
+
+    private fun handleCanvasTouch(action: Int, x: Float, y: Float) {
+        when (action) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouch.set(Vector2f(x, y))
                 touchDown.set(true)
-                return true
+                newStroke.set(true)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                lastTouch.set(Vector2f(x, y))
+                touchDown.set(true)
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 touchDown.set(false)
-                lastTouch.set(Vector2f(event.x, event.y))
-                return true
+                lastTouch.set(Vector2f(x, y))
             }
         }
-        return false
     }
 
     override fun onResume() {
@@ -403,7 +439,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
 
         // 1. Draw to normal screen (GLSurfaceView)
         backgroundRenderer.draw(currentFrame)
-        if (currentFrame.camera.trackingState == TrackingState.TRACKING) {
+        if (currentFrame.camera.trackingState != TrackingState.STOPPED) {
             lineShaderRenderer.draw(
                 viewmtx,
                 projmtx,
@@ -419,7 +455,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
             if (videoRecorder.beginDraw()) {
                 GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
                 backgroundRenderer.draw(currentFrame)
-                if (currentFrame.camera.trackingState == TrackingState.TRACKING) {
+                if (currentFrame.camera.trackingState != TrackingState.STOPPED) {
                     lineShaderRenderer.draw(
                         viewmtx,
                         projmtx,
@@ -468,7 +504,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
             lastFramePosition?.let { lastPos ->
                 val dist = Vector3f(position[0], position[1], position[2])
                 dist.sub(Vector3f(lastPos[0], lastPos[1], lastPos[2]))
-                if (dist.length() > 0.15f) {
+                if (dist.length() > 1.0f) {
                     touchDown.set(false)
                 }
             }

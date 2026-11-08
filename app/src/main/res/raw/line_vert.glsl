@@ -26,7 +26,8 @@ vec2 fix(vec4 i, float aspect) {
 }
 
 void main() {
-    float aspect = resolution.x / resolution.y;
+    float safeResY = max(1.0, resolution.y);
+    float aspect = resolution.x / safeResY;
     vCounters = counters;
     vSide = side;
 
@@ -89,7 +90,7 @@ void main() {
 
     // Guarantee minimum stroke visibility (min ~4.0 pixels) regardless of distance
     float safeW = max(0.0001, finalPosition.w);
-    float pixelWidthRatio = 1.0 / (resolution.y * 0.5);
+    float pixelWidthRatio = 1.0 / (safeResY * 0.5);
     float minClipWidth = 4.0 * pixelWidthRatio * safeW;
     float w = max(clipThickness, minClipWidth);
 
