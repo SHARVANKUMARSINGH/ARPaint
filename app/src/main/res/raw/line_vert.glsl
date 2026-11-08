@@ -3,16 +3,20 @@ precision mediump float;
 attribute vec3 position;
 attribute vec3 previous;
 attribute vec3 next;
+attribute vec3 color;
 attribute float side;
 attribute float width;
 attribute float counters;
-attribute vec3 color;
 
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
 uniform vec2 resolution;
+uniform float lineWidth;
+uniform float lineDepthScale;
 uniform float opacity;
-uniform int isShadowPass;
+uniform float near;
+uniform float far;
+uniform float sizeAttenuation;
 
 varying vec4 vColor;
 varying float vCounters;
@@ -25,40 +29,41 @@ vec2 fix(vec4 i, float aspect) {
     return res;
 }
 
+float map(float value, float inMin, float inMax, float outMin, float outMax) {
+    return ((value - inMin) / (inMax - inMin) * (outMax - outMin) + outMin);
+}
+
 void main() {
     float safeResY = max(1.0, resolution.y);
     float aspect = resolution.x / safeResY;
+    float pixelWidthRatio = 1.0 / (resolution.x * projectionMatrix[0][0]);
+
+    vColor = vec4(color, opacity);
     vCounters = counters;
     vSide = side;
 
-    vec3 currentPos = position;
-    vec3 prevPosVec = previous;
-    vec3 nextPosVec = next;
-
-    // Drop shadow projection:
-    // Cast shadow downward along -Y (gravity in AR space) and slight light offset
-    if (isShadowPass == 1) {
-        vec3 shadowOffset = vec3(0.010, -0.038, -0.010);
-        currentPos += shadowOffset;
-        prevPosVec += shadowOffset;
-        nextPosVec += shadowOffset;
-        vColor = vec4(0.02, 0.02, 0.04, 0.42);
-    } else {
-        vColor = vec4(color, opacity);
-    }
-
     mat4 m = projectionMatrix * modelViewMatrix;
-    vec4 finalPosition = m * vec4(currentPos, 1.0);
-    vec4 prevPos = m * vec4(prevPosVec, 1.0);
-    vec4 nextPos = m * vec4(nextPosVec, 1.0);
+    vec4 finalPosition = m * vec4(position, 1.0);
+    vec4 prevPos = m * vec4(previous, 1.0);
+    vec4 nextPos = m * vec4(next, 1.0);
 
     vec2 currentP = fix(finalPosition, aspect);
     vec2 prevP = fix(prevPos, aspect);
     vec2 nextP = fix(nextPos, aspect);
 
-    // Compute screen-space 2D ribbon direction
+    float pixelWidth = finalPosition.w * pixelWidthRatio;
+    float w = 1.8 * pixelWidth * lineWidth * width;
+
+    if (sizeAttenuation == 1.0) {
+        w = 1.8 * lineWidth * width * map(clamp((finalPosition.z - near) / far, 0.0, 1.0), 0.0, 1.0, 1.0, lineDepthScale);
+    }
+
+    // Minimum stroke visibility guarantee: never drop below 3.0 screen pixels
+    float minW = 3.0 * pixelWidth;
+    w = max(w, minW);
+
     vec2 dir;
-    if (length(currentP - prevP) < 0.00001 && length(nextP - currentP) < 0.00001) {
+    if (length(nextP - currentP) < 0.00001 && length(currentP - prevP) < 0.00001) {
         dir = vec2(1.0, 0.0);
     } else if (length(nextP - currentP) < 0.00001) {
         dir = normalize(currentP - prevP);
@@ -77,24 +82,9 @@ void main() {
 
     vec2 normal = vec2(-dir.y, dir.x);
     normal.x /= aspect;
+    normal *= 0.5 * w;
 
-    // True physical 3D thickness in AR space:
-    // width=0.10 -> ~3mm, width=0.33 -> ~10mm, width=0.80 -> ~24mm, width=1.80 -> ~54mm
-    float worldThickness = 0.030 * max(0.05, width);
-    if (isShadowPass == 1) {
-        worldThickness *= 1.40; // Soft shadow spreads wider
-    }
-
-    // Convert physical meters to clip space
-    float clipThickness = worldThickness * projectionMatrix[1][1];
-
-    // Guarantee minimum stroke visibility (min ~4.0 pixels) regardless of distance
-    float safeW = max(0.0001, finalPosition.w);
-    float pixelWidthRatio = 1.0 / (safeResY * 0.5);
-    float minClipWidth = 4.0 * pixelWidthRatio * safeW;
-    float w = max(clipThickness, minClipWidth);
-
-    vec4 offset = vec4(normal * side * 0.5 * w, 0.0, 0.0);
+    vec4 offset = vec4(normal * side, 0.0, 1.0);
     finalPosition.xy += offset.xy;
 
     gl_Position = finalPosition;

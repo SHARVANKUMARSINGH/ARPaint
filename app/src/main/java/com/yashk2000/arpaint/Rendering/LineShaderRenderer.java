@@ -5,7 +5,6 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 import com.yashk2000.arpaint.R;
-import com.yashk2000.arpaint.Utils.Settings;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -14,11 +13,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.vecmath.Vector3f;
 
 /**
- * High-performance 3D Volumetric AR Ribbon Renderer with:
- * - Real-time studio lighting, glossy specular shine, and ambient occlusion
- * - Ground/contact drop shadows cast directly in 3D AR space
- * - Independent per-stroke colors and line thickness
- * - Silky smooth anti-aliased contours and rounded cap ends
+ * 3D Volumetric AR Ribbon Renderer:
+ * - High-speed ribbon extrusion in clip-space
+ * - Per-stroke independent colors and stroke thickness
+ * - Silky smooth anti-aliased edge contours
  * - Reusable direct memory buffers preventing native memory leaks
  */
 public class LineShaderRenderer {
@@ -36,17 +34,23 @@ public class LineShaderRenderer {
   private int mPositionAttribute = 0;
   private int mPreviousAttribute = 0;
   private int mNextAttribute = 0;
+  private int mColorAttribute = 0;
   private int mSideAttribute = 0;
   private int mWidthAttribute = 0;
   private int mCountersAttribute = 0;
-  private int mColorAttribute = 0;
 
   // Uniform locations
   private int mProjectionUniform = 0;
   private int mModelViewUniform = 0;
   private int mResolutionUniform = 0;
+  private int mLineWidthUniform = 0;
+  private int mLineDepthScaleUniform = 0;
   private int mOpacityUniform = 0;
-  private int mIsShadowPassUniform = 0;
+  private int mNearUniform = 0;
+  private int mFarUniform = 0;
+  private int mSizeAttenuationUniform = 0;
+  private int mVisibilityUniform = 0;
+  private int mAlphaTestUniform = 0;
 
   // Vertex data arrays
   private float[] mPositions;
@@ -123,16 +127,22 @@ public class LineShaderRenderer {
       mPositionAttribute = GLES20.glGetAttribLocation(mProgramName, "position");
       mPreviousAttribute = GLES20.glGetAttribLocation(mProgramName, "previous");
       mNextAttribute = GLES20.glGetAttribLocation(mProgramName, "next");
+      mColorAttribute = GLES20.glGetAttribLocation(mProgramName, "color");
       mSideAttribute = GLES20.glGetAttribLocation(mProgramName, "side");
       mWidthAttribute = GLES20.glGetAttribLocation(mProgramName, "width");
       mCountersAttribute = GLES20.glGetAttribLocation(mProgramName, "counters");
-      mColorAttribute = GLES20.glGetAttribLocation(mProgramName, "color");
 
       mProjectionUniform = GLES20.glGetUniformLocation(mProgramName, "projectionMatrix");
       mModelViewUniform = GLES20.glGetUniformLocation(mProgramName, "modelViewMatrix");
       mResolutionUniform = GLES20.glGetUniformLocation(mProgramName, "resolution");
+      mLineWidthUniform = GLES20.glGetUniformLocation(mProgramName, "lineWidth");
+      mLineDepthScaleUniform = GLES20.glGetUniformLocation(mProgramName, "lineDepthScale");
       mOpacityUniform = GLES20.glGetUniformLocation(mProgramName, "opacity");
-      mIsShadowPassUniform = GLES20.glGetUniformLocation(mProgramName, "isShadowPass");
+      mNearUniform = GLES20.glGetUniformLocation(mProgramName, "near");
+      mFarUniform = GLES20.glGetUniformLocation(mProgramName, "far");
+      mSizeAttenuationUniform = GLES20.glGetUniformLocation(mProgramName, "sizeAttenuation");
+      mVisibilityUniform = GLES20.glGetUniformLocation(mProgramName, "visibility");
+      mAlphaTestUniform = GLES20.glGetUniformLocation(mProgramName, "alphaTest");
 
       Matrix.setIdentityM(mModelMatrix, 0);
       bNeedsUpdate.set(true);
@@ -189,7 +199,6 @@ public class LineShaderRenderer {
       mSide = new float[count];
       mWidth = new float[count];
 
-      // Re-allocate direct float buffers only when growing capacity
       ByteBuffer bbPos = ByteBuffer.allocateDirect(count * 3 * BYTES_PER_FLOAT);
       bbPos.order(ByteOrder.nativeOrder());
       mPositionsBuffer = bbPos.asFloatBuffer();
@@ -385,10 +394,6 @@ public class LineShaderRenderer {
     Matrix.multiplyMM(mModelViewMatrix, 0, cameraView, 0, mModelMatrix, 0);
     Matrix.multiplyMM(mModelViewProjectionMatrix, 0, cameraPerspective, 0, mModelViewMatrix, 0);
 
-    GLES20.glDisable(GLES20.GL_CULL_FACE);
-    GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-    GLES20.glDepthFunc(GLES20.GL_LEQUAL);
-
     GLES20.glUseProgram(mProgramName);
     GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mVbo);
 
@@ -410,7 +415,14 @@ public class LineShaderRenderer {
     GLES20.glUniformMatrix4fv(mModelViewUniform, 1, false, mModelViewMatrix, 0);
     GLES20.glUniformMatrix4fv(mProjectionUniform, 1, false, cameraPerspective, 0);
     GLES20.glUniform2f(mResolutionUniform, screenWidth, screenHeight);
+    GLES20.glUniform1f(mLineWidthUniform, 0.01f);
+    GLES20.glUniform1f(mLineDepthScaleUniform, 10.0f);
     GLES20.glUniform1f(mOpacityUniform, 1.0f);
+    GLES20.glUniform1f(mNearUniform, nearClip);
+    GLES20.glUniform1f(mFarUniform, farClip);
+    GLES20.glUniform1f(mSizeAttenuationUniform, 1.0f);
+    GLES20.glUniform1f(mVisibilityUniform, 1.0f);
+    GLES20.glUniform1f(mAlphaTestUniform, 0.0f);
 
     GLES20.glEnableVertexAttribArray(mPositionAttribute);
     GLES20.glEnableVertexAttribArray(mPreviousAttribute);
@@ -420,22 +432,13 @@ public class LineShaderRenderer {
     GLES20.glEnableVertexAttribArray(mWidthAttribute);
     GLES20.glEnableVertexAttribArray(mCountersAttribute);
 
-    // ================= PASS 1: REAL-TIME DROP SHADOWS =================
-    if (Settings.isShadowsEnabled()) {
-      GLES20.glEnable(GLES20.GL_BLEND);
-      GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-      GLES20.glDepthMask(false); // Do not write to depth buffer for shadow pass
-
-      GLES20.glUniform1i(mIsShadowPassUniform, 1);
-      GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, mNumBytes);
-    }
-
-    // ================= PASS 2: MAIN 3D VOLUMETRIC LIT STROKES =================
     GLES20.glEnable(GLES20.GL_BLEND);
     GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-    GLES20.glDepthMask(true); // Write depth for main stroke geometry
+    GLES20.glDisable(GLES20.GL_CULL_FACE);
+    GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+    GLES20.glDepthFunc(GLES20.GL_LEQUAL);
+    GLES20.glDepthMask(true);
 
-    GLES20.glUniform1i(mIsShadowPassUniform, 0);
     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, mNumBytes);
 
     GLES20.glDisable(GLES20.GL_BLEND);

@@ -65,6 +65,8 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
     private var frame: Frame? = null
     private val isTracking = AtomicBoolean(false)
     private val zeroMatrix = FloatArray(16)
+    private val tempViewMatrix = FloatArray(16)
+    private var isCalibrated = false
     private var lastPoint = Vector3f(0f, 0f, 0f)
 
     private val strokesLock = Any()
@@ -207,9 +209,6 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                         errorMessage = errorMessageCompose.value,
                         onDismissError = {
                             errorMessageCompose.value = null
-                        },
-                        onCanvasTouch = { action, x, y ->
-                            handleCanvasTouch(action, x, y)
                         }
                     )
                 }
@@ -221,7 +220,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         val density = resources.displayMetrics.density
-        val topBarHeight = 90f * density
+        val topBarHeight = 85f * density
         val bottomDockHeight = 145f * density
         val screenH = resources.displayMetrics.heightPixels
 
@@ -232,17 +231,20 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                 if (inDrawingArea) {
                     isDrawingActive.set(true)
                     handleCanvasTouch(MotionEvent.ACTION_DOWN, ev.x, ev.y)
+                    return true
                 }
             }
             MotionEvent.ACTION_MOVE -> {
                 if (isDrawingActive.get()) {
                     handleCanvasTouch(MotionEvent.ACTION_MOVE, ev.x, ev.y)
+                    return true
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDrawingActive.get()) {
                     isDrawingActive.set(false)
                     handleCanvasTouch(MotionEvent.ACTION_UP, ev.x, ev.y)
+                    return true
                 }
             }
         }
@@ -504,13 +506,24 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
             lastFramePosition?.let { lastPos ->
                 val dist = Vector3f(position[0], position[1], position[2])
                 dist.sub(Vector3f(lastPos[0], lastPos[1], lastPos[2]))
-                if (dist.length() > 1.0f) {
+                if (dist.length() > 0.5f) {
                     touchDown.set(false)
                 }
             }
             lastFramePosition = position
 
-            Matrix.multiplyMM(viewmtx, 0, viewmtx, 0, zeroMatrix, 0)
+            if (reCenterView.get()) {
+                reCenterView.set(false)
+                getCalibrationMatrix()?.let { calib ->
+                    System.arraycopy(calib, 0, zeroMatrix, 0, 16)
+                    isCalibrated = true
+                }
+            }
+
+            if (isCalibrated) {
+                Matrix.multiplyMM(tempViewMatrix, 0, viewmtx, 0, zeroMatrix, 0)
+                System.arraycopy(tempViewMatrix, 0, viewmtx, 0, 16)
+            }
 
             // Touch handling
             val touch = lastTouch.get()
@@ -522,13 +535,6 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                 } else if (touchDown.get()) {
                     addPoint(touch)
                     lineShaderRenderer.bNeedsUpdate.set(true)
-                }
-            }
-
-            if (reCenterView.get()) {
-                reCenterView.set(false)
-                getCalibrationMatrix()?.let { calib ->
-                    System.arraycopy(calib, 0, zeroMatrix, 0, 16)
                 }
             }
 
@@ -603,7 +609,11 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
 
         biquadFilter = BiquadFilter(0.1)
         biquadFilter.reset(newPoint)
-        lastPoint = biquadFilter.update(newPoint)
+        for (i in 0 until 1500) {
+            biquadFilter.update(newPoint)
+        }
+        val smoothed = biquadFilter.update(newPoint)
+        lastPoint = smoothed
 
         synchronized(strokesLock) {
             val stroke = Stroke(
@@ -612,7 +622,7 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
             )
             stroke.addPoint(lastPoint)
             // Immediately add a micro-offset so single taps and stroke beginnings render instantly
-            val microPoint = Vector3f(lastPoint.x + 0.0002f, lastPoint.y + 0.0002f, lastPoint.z)
+            val microPoint = Vector3f(lastPoint.x + 0.0005f, lastPoint.y + 0.0005f, lastPoint.z)
             stroke.addPoint(microPoint)
             strokes.add(stroke)
         }
@@ -639,6 +649,8 @@ class MainActivity : ComponentActivity(), GLSurfaceView.Renderer {
                         Settings.getLineWidth()
                     )
                     stroke.addPoint(lastPoint)
+                    val microPoint = Vector3f(lastPoint.x + 0.0005f, lastPoint.y + 0.0005f, lastPoint.z)
+                    stroke.addPoint(microPoint)
                     strokes.add(stroke)
                 } else {
                     strokes[strokes.size - 1].addPoint(lastPoint)
